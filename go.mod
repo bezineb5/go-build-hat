@@ -1,6 +1,6 @@
 module github.com/bezineb5/go-build-hat
 
-go 1.25
+go 1.24.0
 
 require go.bug.st/serial v1.6.4
 
