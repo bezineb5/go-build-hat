@@ -26,7 +26,7 @@ func (m *MockSerialPort) Read(p []byte) (n int, err error) {
 	response := m.responses[m.index] + "\n"
 	m.index++
 
-	copy(p, []byte(response))
+	copy(p, response)
 	return len(response), nil
 }
 

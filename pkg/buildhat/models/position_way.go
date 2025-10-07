@@ -22,6 +22,6 @@ func (pw PositionWay) String() string {
 	case AntiClockwise:
 		return "Anti Clockwise"
 	default:
-		return "Unknown"
+		return ledUnknownName
 	}
 }

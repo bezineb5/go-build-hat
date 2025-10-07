@@ -22,9 +22,13 @@ func NewButtonSensor(brick BrickInterface, port models.SensorPort) *ButtonSensor
 	}
 }
 
+const (
+	buttonSensorName = "Button sensor"
+)
+
 // GetSensorName gets the name of the sensor
 func (s *ButtonSensor) GetSensorName() string {
-	return "Button sensor"
+	return buttonSensorName
 }
 
 // IsPressed gets true when the button is pressed

@@ -20,4 +20,4 @@ build-examples:
 
 # Run linter
 lint:
-	golangci-lint run
+	~/go/bin/golangci-lint run

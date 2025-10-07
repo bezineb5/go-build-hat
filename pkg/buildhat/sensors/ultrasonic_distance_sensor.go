@@ -21,7 +21,7 @@ type UltrasonicDistanceSensor struct {
 }
 
 // NewUltrasonicDistanceSensor creates a new ultrasonic distance sensor
-func NewUltrasonicDistanceSensor(brick BrickInterface, port models.SensorPort) *UltrasonicDistanceSensor {
+func NewUltrasonicDistanceSensor(brick BrickInterface, port models.SensorPort) (*UltrasonicDistanceSensor, error) {
 	sensor := &UltrasonicDistanceSensor{
 		ActiveSensor: NewActiveSensor(brick, port, models.SpikePrimeUltrasonicDistanceSensor),
 		distance:     0,
@@ -30,14 +30,18 @@ func NewUltrasonicDistanceSensor(brick BrickInterface, port models.SensorPort) *
 
 	// Initialize sensor - set to distance mode (-1)
 	command := fmt.Sprintf("port %d ; plimit 1 ; set -1\r", port.Byte())
-	sensor.GetBrick().SendRawCommand(command)
+	if err := sensor.GetBrick().SendRawCommand(command); err != nil {
+		return nil, err
+	}
 
-	return sensor
+	return sensor, nil
 }
+
+const ultrasonicDistanceSensorName = "SPIKE distance sensor"
 
 // GetSensorName gets the name of the sensor
 func (s *UltrasonicDistanceSensor) GetSensorName() string {
-	return "SPIKE distance sensor"
+	return ultrasonicDistanceSensorName
 }
 
 // Distance gets the distance in millimeters
@@ -83,10 +87,9 @@ func (s *UltrasonicDistanceSensor) SetContinuousMeasurement(continuous bool) err
 		if s.continuous {
 			// Start continuous reading
 			return s.GetBrick().SelectModeAndRead(s.GetPort(), 0, s.continuous)
-		} else {
-			// Stop continuous reading
-			return s.GetBrick().StopContinuousReadingSensor(s.GetPort())
 		}
+		// Stop continuous reading
+		return s.GetBrick().StopContinuousReadingSensor(s.GetPort())
 	}
 
 	return nil
@@ -108,7 +111,9 @@ func (s *UltrasonicDistanceSensor) UpdateFromSensorData(data []string) error {
 	defer s.mu.Unlock()
 
 	// Update raw values in base sensor
-	s.ActiveSensor.UpdateFromSensorData(data)
+	if err := s.ActiveSensor.UpdateFromSensorData(data); err != nil {
+		return err
+	}
 
 	// Parse distance sensor specific data
 	if len(data) >= 1 {

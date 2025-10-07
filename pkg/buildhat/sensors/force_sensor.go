@@ -31,9 +31,11 @@ func NewForceSensor(brick BrickInterface, port models.SensorPort) *ForceSensor {
 	}
 }
 
+const forceSensorName = "SPIKE force sensor"
+
 // GetSensorName gets the name of the sensor
 func (s *ForceSensor) GetSensorName() string {
-	return "SPIKE force sensor"
+	return forceSensorName
 }
 
 // Force gets the force in Newtons
@@ -104,10 +106,9 @@ func (s *ForceSensor) SetContinuousMeasurement(continuous bool) error {
 		if s.continuous {
 			// Start continuous reading
 			return s.GetBrick().SelectModeAndRead(s.GetPort(), 0, s.continuous)
-		} else {
-			// Stop continuous reading
-			return s.GetBrick().StopContinuousReadingSensor(s.GetPort())
 		}
+		// Stop continuous reading
+		return s.GetBrick().StopContinuousReadingSensor(s.GetPort())
 	}
 
 	return nil
@@ -139,7 +140,9 @@ func (s *ForceSensor) UpdateFromSensorData(data []string) error {
 	defer s.mu.Unlock()
 
 	// Update raw values in base sensor
-	s.ActiveSensor.UpdateFromSensorData(data)
+	if err := s.ActiveSensor.UpdateFromSensorData(data); err != nil {
+		return err
+	}
 
 	// Parse force sensor specific data
 	if len(data) >= 1 {

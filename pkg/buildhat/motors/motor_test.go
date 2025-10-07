@@ -63,7 +63,7 @@ func (m *MockBrick) SetMotorBias(port models.SensorPort, bias float64) error {
 	return nil
 }
 
-func (m *MockBrick) MoveMotorForSeconds(port models.SensorPort, seconds float64, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrick) MoveMotorForSeconds(ctx context.Context, port models.SensorPort, seconds float64, speed int, blocking bool) error {
 	m.moveMotorCalls = append(m.moveMotorCalls, MoveMotorCall{
 		Port:     port,
 		Seconds:  seconds,
@@ -75,7 +75,7 @@ func (m *MockBrick) MoveMotorForSeconds(port models.SensorPort, seconds float64,
 	return nil
 }
 
-func (m *MockBrick) MoveMotorToPosition(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrick) MoveMotorToPosition(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
 	m.moveMotorCalls = append(m.moveMotorCalls, MoveMotorCall{
 		Port:           port,
 		TargetPosition: targetPosition,
@@ -87,7 +87,7 @@ func (m *MockBrick) MoveMotorToPosition(port models.SensorPort, targetPosition i
 	return nil
 }
 
-func (m *MockBrick) MoveMotorToAbsolutePosition(port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrick) MoveMotorToAbsolutePosition(ctx context.Context, port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool) error {
 	m.moveMotorCalls = append(m.moveMotorCalls, MoveMotorCall{
 		Port:           port,
 		TargetPosition: targetPosition,
@@ -100,7 +100,7 @@ func (m *MockBrick) MoveMotorToAbsolutePosition(port models.SensorPort, targetPo
 	return nil
 }
 
-func (m *MockBrick) MoveMotorForDegrees(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrick) MoveMotorForDegrees(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
 	m.moveMotorCalls = append(m.moveMotorCalls, MoveMotorCall{
 		Port:           port,
 		TargetPosition: targetPosition,
@@ -118,37 +118,40 @@ func (m *MockBrick) FloatMotor(port models.SensorPort) error {
 }
 
 // Sensor control methods
-func (m *MockBrick) SelectModeAndRead(port models.SensorPort, mode int, readOnce bool) error {
+func (m *MockBrick) SelectModeAndRead(_ models.SensorPort, _ int, _ bool) error {
 	return nil
 }
 
-func (m *MockBrick) SelectCombiModesAndRead(port models.SensorPort, modes []int, readOnce bool) error {
+func (m *MockBrick) SelectCombiModesAndRead(_ models.SensorPort, _ []int, _ bool) error {
 	return nil
 }
 
-func (m *MockBrick) StopContinuousReadingSensor(port models.SensorPort) error {
+func (m *MockBrick) StopContinuousReadingSensor(_ models.SensorPort) error {
 	return nil
 }
 
-func (m *MockBrick) SwitchSensorOn(port models.SensorPort) error {
+func (m *MockBrick) SwitchSensorOn(_ models.SensorPort) error {
 	return nil
 }
 
-func (m *MockBrick) SwitchSensorOff(port models.SensorPort) error {
+func (m *MockBrick) SwitchSensorOff(_ models.SensorPort) error {
 	return nil
 }
 
-func (m *MockBrick) WriteBytesToSensor(port models.SensorPort, data []byte, singleHeader bool) error {
+func (m *MockBrick) WriteBytesToSensor(_ models.SensorPort, _ []byte, _ bool) error {
 	return nil
 }
 
-func (m *MockBrick) SendRawCommand(command string) error {
+func (m *MockBrick) SendRawCommand(_ string) error {
 	return nil
 }
 
 func TestActiveMotor(t *testing.T) {
 	mockBrick := &MockBrick{}
-	motor := NewActiveMotor(mockBrick, models.PortA, models.SpikePrimeLargeMotor)
+	motor, err := NewActiveMotor(mockBrick, models.PortA, models.SpikePrimeLargeMotor)
+	if err != nil {
+		t.Errorf("Failed to create active motor: %v", err)
+	}
 
 	// Test basic properties
 	if motor.GetPort() != models.PortA {
@@ -238,7 +241,7 @@ func TestActiveMotor(t *testing.T) {
 
 	// Test movement methods
 	ctx := context.Background()
-	if err := motor.MoveForSeconds(2.0, true, ctx); err != nil {
+	if err := motor.MoveForSeconds(ctx, 2.0, true); err != nil {
 		t.Errorf("Failed to move motor for seconds: %v", err)
 	}
 
@@ -253,7 +256,10 @@ func TestActiveMotor(t *testing.T) {
 
 func TestPassiveMotor(t *testing.T) {
 	mockBrick := &MockBrick{}
-	motor := NewPassiveMotor(mockBrick, models.PortB, models.SystemMediumMotor)
+	motor, err := NewPassiveMotor(mockBrick, models.PortB, models.SystemMediumMotor)
+	if err != nil {
+		t.Errorf("Failed to create passive motor: %v", err)
+	}
 
 	// Test basic properties
 	if motor.GetPort() != models.PortB {
@@ -313,7 +319,7 @@ func TestPassiveMotor(t *testing.T) {
 	}
 
 	if len(mockBrick.motorBiasCalls) != 2 {
-		t.Error("Expected two bias calls (initial + our call)")
+		t.Error("Expected two bias calls (initial + our call), got ", len(mockBrick.motorBiasCalls))
 	}
 
 	// Test power limit setting (initial call + our call = 2 total)
@@ -322,7 +328,7 @@ func TestPassiveMotor(t *testing.T) {
 	}
 
 	if len(mockBrick.motorLimitsCalls) != 2 {
-		t.Error("Expected two power limit calls (initial + our call)")
+		t.Error("Expected two power limit calls (initial + our call), got ", len(mockBrick.motorLimitsCalls))
 	}
 
 	// Test floating motor
@@ -331,13 +337,16 @@ func TestPassiveMotor(t *testing.T) {
 	}
 
 	if len(mockBrick.floatMotorCalls) != 1 {
-		t.Error("Expected one float motor call")
+		t.Error("Expected one float motor call, got ", len(mockBrick.floatMotorCalls))
 	}
 }
 
 func TestMotorValidation(t *testing.T) {
 	mockBrick := &MockBrick{}
-	motor := NewActiveMotor(mockBrick, models.PortA, models.SpikePrimeLargeMotor)
+	motor, err := NewActiveMotor(mockBrick, models.PortA, models.SpikePrimeLargeMotor)
+	if err != nil {
+		t.Errorf("Failed to create active motor: %v", err)
+	}
 
 	// Test invalid speed
 	if err := motor.SetSpeed(150); err == nil {

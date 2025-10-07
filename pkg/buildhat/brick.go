@@ -198,7 +198,12 @@ func (b *Brick) initialize() error {
 		if err := b.setLedMode(models.VoltageDependant); err == nil {
 			time.Sleep(50 * time.Millisecond)
 			b.readLine()
-			rawV := strings.Fields(b.getRawVoltage())
+			rawVoltage, err := b.getRawVoltage()
+			if err != nil {
+				b.logger.Error("Failed to get raw voltage", "error", err)
+				return
+			}
+			rawV := strings.Fields(rawVoltage)
 			if len(rawV) > 0 {
 				if voltage, err := strconv.ParseFloat(rawV[0], 64); err == nil {
 					b.mu.Lock()
@@ -225,7 +230,9 @@ func (b *Brick) startRunning() {
 // running is the main background processing loop
 func (b *Brick) running() {
 	// Force an update
-	b.writeCommand("list\r")
+	if err := b.writeCommand("list\r"); err != nil {
+		b.logger.Error("Failed to send list command", "error", err)
+	}
 
 	for {
 		select {
@@ -259,17 +266,18 @@ func (b *Brick) processOutput(line string) {
 	b.logger.Debug("Processing output", "line", line)
 
 	// Handle different types of output
-	if strings.Contains(line, ": connected to active ID ") || strings.Contains(line, ": connected to passive ID ") {
+	switch {
+	case strings.Contains(line, ": connected to active ID ") || strings.Contains(line, ": connected to passive ID "):
 		b.handleDeviceConnected(line)
-	} else if strings.Contains(line, ": disconnected") || strings.Contains(line, ": timeout during data phase: disconnecting") || strings.Contains(line, ": no device detected") {
+	case strings.Contains(line, ": disconnected") || strings.Contains(line, ": timeout during data phase: disconnecting") || strings.Contains(line, ": no device detected"):
 		b.handleDeviceDisconnected(line)
-	} else if len(line) > 3 && line[0] == 'P' && (line[2] == 'C' || line[2] == 'M') {
+	case len(line) > 3 && line[0] == 'P' && (line[2] == 'C' || line[2] == 'M'):
 		b.handleSensorData(line)
-	} else if strings.Contains(line, ": button released") {
+	case strings.Contains(line, ": button released"):
 		b.handleButtonReleased(line)
-	} else if strings.Contains(line, ": button pressed") {
+	case strings.Contains(line, ": button pressed"):
 		b.handleButtonPressed(line)
-	} else if strings.Contains(line, "power fault") {
+	case strings.Contains(line, "power fault"):
 		b.handlePowerFault()
 	}
 }
@@ -333,11 +341,15 @@ func (b *Brick) checkForFirmwareAndUpload() error {
 	b.readExisting()
 
 	// We have to do it 2 times to make sure, the first time, it may not provide the proper elements
-	b.writeCommand(getFirmwareVersion)
+	if err := b.writeCommand(getFirmwareVersion); err != nil {
+		return err
+	}
 	time.Sleep(50 * time.Millisecond)
 	b.readExisting() // Clear first response
 
-	b.writeCommand(getFirmwareVersion)
+	if err := b.writeCommand(getFirmwareVersion); err != nil {
+		return err
+	}
 	time.Sleep(50 * time.Millisecond)
 	prompt := b.readExisting()
 
@@ -346,7 +358,9 @@ func (b *Brick) checkForFirmwareAndUpload() error {
 		b.logger.Info("Bootloader detected, uploading firmware")
 
 		// Send carriage return to get prompt
-		b.writeCommand("\r")
+		if err := b.writeCommand("\r"); err != nil {
+			return fmt.Errorf("failed to send carriage return: %w", err)
+		}
 		b.readLine()
 		b.readExisting()
 
@@ -362,13 +376,17 @@ func (b *Brick) checkForFirmwareAndUpload() error {
 		}
 
 		// Step 1: clear and get the prompt
-		b.writeCommand("clear\r")
+		if err := b.writeCommand("clear\r"); err != nil {
+			return fmt.Errorf("failed to send clear command: %w", err)
+		}
 		b.readLine()
 		b.readExisting()
 
 		// Step 2: load the firmware
 		checksum := b.GetFirmwareChecksum(firmware)
-		b.writeCommand(fmt.Sprintf("load %d %d\r", len(firmware), checksum))
+		if err := b.writeCommand(fmt.Sprintf("load %d %d\r", len(firmware), checksum)); err != nil {
+			return fmt.Errorf("failed to send load command: %w", err)
+		}
 		b.readExisting()
 
 		// Write firmware data with STX/ETX markers
@@ -379,7 +397,9 @@ func (b *Brick) checkForFirmwareAndUpload() error {
 
 		// Step 3: load the signature
 		b.readExisting()
-		b.writeCommand(fmt.Sprintf("signature %d\r", len(signature)))
+		if err := b.writeCommand(fmt.Sprintf("signature %d\r", len(signature))); err != nil {
+			return fmt.Errorf("failed to send signature command: %w", err)
+		}
 
 		// Write signature data with STX/ETX markers
 		if err := b.writeBinaryData(signature); err != nil {
@@ -389,7 +409,9 @@ func (b *Brick) checkForFirmwareAndUpload() error {
 		b.readExisting()
 
 		// Step 4: reboot
-		b.writeCommand("reboot\r")
+		if err := b.writeCommand("reboot\r"); err != nil {
+			return fmt.Errorf("failed to send reboot command: %w", err)
+		}
 		b.readLine()
 		b.readExisting()
 		time.Sleep(1500 * time.Millisecond)
@@ -412,13 +434,59 @@ func (b *Brick) setLedMode(mode models.LedMode) error {
 	return b.writeCommand(fmt.Sprintf("ledmode %d\r", int(mode)))
 }
 
-func (b *Brick) getRawVoltage() string {
-	b.writeCommand("vin\r")
+func (b *Brick) getRawVoltage() (string, error) {
+	if err := b.writeCommand("vin\r"); err != nil {
+		return "", fmt.Errorf("failed to send vin command: %w", err)
+	}
 	b.readLine()
 	response := b.readLine()
 	// Remove "V" suffix if present for consistent parsing
 	response = strings.TrimSuffix(response, "V")
-	return strings.TrimSpace(response)
+	return strings.TrimSpace(response), nil
+}
+
+// createSensorForType creates the appropriate sensor/motor object based on sensor type
+func (b *Brick) createSensorForType(sensorPort models.SensorPort, sensorType models.SensorType) (SensorDataHandler, error) {
+	var sensor SensorDataHandler
+	var err error
+
+	switch sensorType {
+	case models.ButtonOrTouchSensor:
+		sensor = sensors.NewButtonSensor(b, sensorPort)
+	case models.SpikePrimeColorSensor, models.ColourAndDistanceSensor:
+		sensor, err = sensors.NewColorSensor(b, sensorPort, sensorType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create color sensor: %w", err)
+		}
+	case models.SpikePrimeForceSensor:
+		sensor = sensors.NewForceSensor(b, sensorPort)
+	case models.SpikePrimeUltrasonicDistanceSensor:
+		sensor, err = sensors.NewUltrasonicDistanceSensor(b, sensorPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ultrasonic distance sensor: %w", err)
+		}
+	case models.SimpleLights:
+		sensor = sensors.NewPassiveLight(b, sensorPort)
+	case models.SpikePrimeLargeMotor, models.SpikePrimeMediumMotor, models.TechnicMediumAngularMotor, models.TechnicLargeMotorID, models.TechnicXLMotorID, models.SpikeEssentialSmallAngularMotor, models.MediumLinearMotor:
+		// Create active motor for motor types
+		sensor, err = motors.NewActiveMotor(b, sensorPort, sensorType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create active motor: %w", err)
+		}
+	case models.SystemMediumMotor, models.SystemTrainMotor, models.SystemTurntableMotor, models.TechnicLargeMotor, models.TechnicXLMotor:
+		// Create passive motor for passive motor types
+		sensor, err = motors.NewPassiveMotor(b, sensorPort, sensorType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create passive motor: %w", err)
+		}
+	default:
+		// For other sensor types, create a generic active sensor
+		if sensorType.IsActiveSensor() {
+			sensor = sensors.NewActiveSensor(b, sensorPort, sensorType)
+		}
+	}
+
+	return sensor, nil
 }
 
 // Device connection/disconnection handlers
@@ -451,29 +519,10 @@ func (b *Brick) handleDeviceConnected(line string) {
 	sensorPort := models.SensorPort(port)
 	sensorType := models.SensorType(sensorTypeHex)
 
-	var sensor SensorDataHandler
-	switch sensorType {
-	case models.ButtonOrTouchSensor:
-		sensor = sensors.NewButtonSensor(b, sensorPort)
-	case models.SpikePrimeColorSensor, models.ColourAndDistanceSensor:
-		sensor = sensors.NewColorSensor(b, sensorPort, sensorType)
-	case models.SpikePrimeForceSensor:
-		sensor = sensors.NewForceSensor(b, sensorPort)
-	case models.SpikePrimeUltrasonicDistanceSensor:
-		sensor = sensors.NewUltrasonicDistanceSensor(b, sensorPort)
-	case models.SimpleLights:
-		sensor = sensors.NewPassiveLight(b, sensorPort)
-	case models.SpikePrimeLargeMotor, models.SpikePrimeMediumMotor, models.TechnicMediumAngularMotor, models.TechnicLargeMotorId, models.TechnicXLMotorId, models.SpikeEssentialSmallAngularMotor, models.MediumLinearMotor:
-		// Create active motor for motor types
-		sensor = motors.NewActiveMotor(b, sensorPort, sensorType)
-	case models.SystemMediumMotor, models.SystemTrainMotor, models.SystemTurntableMotor, models.TechnicLargeMotor, models.TechnicXLMotor:
-		// Create passive motor for passive motor types
-		sensor = motors.NewPassiveMotor(b, sensorPort, sensorType)
-	default:
-		// For other sensor types, create a generic active sensor
-		if sensorType.IsActiveSensor() {
-			sensor = sensors.NewActiveSensor(b, sensorPort, sensorType)
-		}
+	sensor, err := b.createSensorForType(sensorPort, sensorType)
+	if err != nil {
+		b.logger.Error("Failed to create sensor", "port", sensorPort, "error", err)
+		return
 	}
 
 	if sensor != nil {
@@ -556,7 +605,9 @@ func (b *Brick) handleButtonReleased(line string) {
 
 	if sensor != nil {
 		// Update button sensor with released state
-		sensor.UpdateFromSensorData([]string{"0"})
+		if err := sensor.UpdateFromSensorData([]string{"0"}); err != nil {
+			b.logger.Error("Failed to update sensor data", "error", err)
+		}
 		if triggerFlag := sensor.GetTriggerFlag(); triggerFlag != nil {
 			*triggerFlag = true
 		}
@@ -578,7 +629,9 @@ func (b *Brick) handleButtonPressed(line string) {
 
 	if sensor != nil {
 		// Update button sensor with pressed state
-		sensor.UpdateFromSensorData([]string{"1"})
+		if err := sensor.UpdateFromSensorData([]string{"1"}); err != nil {
+			b.logger.Error("Failed to update sensor data", "error", err)
+		}
 		if triggerFlag := sensor.GetTriggerFlag(); triggerFlag != nil {
 			*triggerFlag = true
 		}
@@ -618,11 +671,10 @@ func (b *Brick) SetPowerLevel(port models.SensorPort, powerPercent int) error {
 			return fmt.Errorf("failed to select combi modes: %w", err)
 		}
 		return b.writeCommand(fmt.Sprintf("port %d ; pid %d 0 0 s1 1 0 0.003 0.01 0 100; set %d\r", port.Byte(), port.Byte(), powerPercent))
-	} else {
-		// Passive motor or light
-		powerFloat := float64(powerPercent) / 100.0
-		return b.writeCommand(fmt.Sprintf("port %d ; pwm ; set %.3f\r", port.Byte(), powerFloat))
 	}
+	// Passive motor or light
+	powerFloat := float64(powerPercent) / 100.0
+	return b.writeCommand(fmt.Sprintf("port %d ; pwm ; set %.3f\r", port.Byte(), powerFloat))
 }
 
 // SetMotorLimits sets the motor speed limit
@@ -666,7 +718,7 @@ func (b *Brick) SetMotorBias(port models.SensorPort, bias float64) error {
 }
 
 // MoveMotorForSeconds runs the specified motor for an amount of seconds
-func (b *Brick) MoveMotorForSeconds(port models.SensorPort, seconds float64, speed int, blocking bool, ctx context.Context) error {
+func (b *Brick) MoveMotorForSeconds(ctx context.Context, port models.SensorPort, seconds float64, speed int, blocking bool) error {
 	if seconds <= 0 {
 		return nil // No need to move
 	}
@@ -858,15 +910,79 @@ func (b *Brick) ClearFaults() error {
 
 // Additional methods needed for BrickInterface
 
-// MoveMotorToPosition runs the motor to an absolute position
-func (b *Brick) MoveMotorToPosition(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
-	// This is a simplified implementation - in a real implementation, this would
-	// use the same logic as MoveMotorToAbsolutePosition but without the way parameter
-	return b.MoveMotorToAbsolutePosition(port, targetPosition, models.Shortest, speed, blocking, ctx)
+// MoveMotorToPosition runs the motor to a relative position
+func (b *Brick) MoveMotorToPosition(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
+	const angleTolerance = 2.028
+
+	b.mu.RLock()
+	sensorType := b.sensorTypes[port.Byte()]
+	b.mu.RUnlock()
+
+	if !sensorType.IsMotor() {
+		return fmt.Errorf("not a motor connected")
+	}
+
+	if !sensorType.IsActiveSensor() {
+		return fmt.Errorf("not an active motor connected")
+	}
+
+	if speed == 0 {
+		return fmt.Errorf("speed can't be 0")
+	}
+
+	// Clamp speed to valid range
+	if speed < -100 {
+		speed = -100
+	} else if speed > 100 {
+		speed = 100
+	}
+
+	b.mu.RLock()
+	motor, ok := b.sensors[port.Byte()].(*motors.ActiveMotor)
+	b.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("motor not found")
+	}
+
+	// Get current relative position
+	actualPosition := motor.GetPosition()
+	actualPositionDouble := float64(actualPosition) / 360.0
+	newPosition := (float64(targetPosition) - actualPositionDouble) / 360.0
+
+	// Calculate duration based on speed and power limit
+	duration := math.Abs(newPosition-actualPositionDouble) / (float64(speed) * 0.05 * motor.GetPowerLimit())
+
+	// Set continuous reading
+	if err := b.SelectCombiModesAndRead(port, []int{1, 2, 3}, false); err != nil {
+		return fmt.Errorf("failed to set continuous reading: %w", err)
+	}
+
+	// Send ramp command
+	command := fmt.Sprintf("port %d ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp %.10f %.10f %.10f 0\r",
+		port.Byte(), port.Byte(), actualPositionDouble, newPosition, duration)
+
+	if err := b.writeCommand(command); err != nil {
+		return fmt.Errorf("failed to send ramp command: %w", err)
+	}
+
+	if blocking {
+		pos := motor.GetPosition()
+		for !((float64(pos)/360.0 < newPosition+angleTolerance) && (float64(pos)/360.0 > newPosition-angleTolerance)) {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				time.Sleep(5 * time.Millisecond)
+				pos = motor.GetPosition()
+			}
+		}
+	}
+
+	return nil
 }
 
 // MoveMotorToAbsolutePosition runs the motor to an absolute position
-func (b *Brick) MoveMotorToAbsolutePosition(port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool, ctx context.Context) error {
+func (b *Brick) MoveMotorToAbsolutePosition(ctx context.Context, port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool) error {
 	b.mu.RLock()
 	sensorType := b.sensorTypes[port.Byte()]
 	b.mu.RUnlock()
@@ -947,10 +1063,8 @@ func (b *Brick) MoveMotorToAbsolutePosition(port models.SensorPort, targetPositi
 	return nil
 }
 
-// MoveMotorForDegrees runs the motor for a specific number of degrees
-func (b *Brick) MoveMotorForDegrees(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
-	const angleTolerance = 2.028
-
+// validateMotorForDegrees validates the motor and speed for degree-based movement
+func (b *Brick) validateMotorForDegrees(port models.SensorPort, speed int) error {
 	b.mu.RLock()
 	sensorType := b.sensorTypes[port.Byte()]
 	b.mu.RUnlock()
@@ -967,29 +1081,57 @@ func (b *Brick) MoveMotorForDegrees(port models.SensorPort, targetPosition int, 
 		return fmt.Errorf("speed can't be 0")
 	}
 
-	// Clamp speed between -100 and 100
-	if speed < -100 {
-		speed = -100
-	} else if speed > 100 {
-		speed = 100
-	}
+	return nil
+}
 
-	// Get motor from sensors
+// getActiveMotorFromPort retrieves and validates an active motor from the specified port
+func (b *Brick) getActiveMotorFromPort(port models.SensorPort) (*motors.ActiveMotor, error) {
 	b.mu.RLock()
 	sensorHandler := b.sensors[port.Byte()]
 	b.mu.RUnlock()
 
 	if sensorHandler == nil {
-		return fmt.Errorf("no sensor found on port %s", port.String())
+		return nil, fmt.Errorf("no sensor found on port %s", port.String())
 	}
 
-	// Cast to ActiveMotor to get position data
 	activeMotor, ok := sensorHandler.(*motors.ActiveMotor)
 	if !ok {
-		return fmt.Errorf("sensor on port %s is not an active motor", port.String())
+		return nil, fmt.Errorf("sensor on port %s is not an active motor", port.String())
 	}
 
-	// Get current position
+	return activeMotor, nil
+}
+
+// clampSpeed clamps speed to valid range [-100, 100]
+func clampSpeed(speed int) int {
+	if speed < -100 {
+		return -100
+	}
+	if speed > 100 {
+		return 100
+	}
+	return speed
+}
+
+// MoveMotorForDegrees runs the motor for a specific number of degrees
+func (b *Brick) MoveMotorForDegrees(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
+	const angleTolerance = 2.028
+
+	// Validate motor and speed
+	if err := b.validateMotorForDegrees(port, speed); err != nil {
+		return err
+	}
+
+	// Clamp speed to valid range
+	speed = clampSpeed(speed)
+
+	// Get active motor
+	activeMotor, err := b.getActiveMotorFromPort(port)
+	if err != nil {
+		return err
+	}
+
+	// Calculate movement parameters
 	actualPosition := activeMotor.GetPosition()
 	actualPositionDouble := float64(actualPosition) / 360.0
 
@@ -1041,7 +1183,7 @@ func (b *Brick) MoveMotorForDegrees(port models.SensorPort, targetPosition int, 
 }
 
 // toAbsolutePosition calculates the new position based on target position, way, and current positions
-func (b *Brick) toAbsolutePosition(targetPosition int, way models.PositionWay, actualPosition int, actualAbsolutePosition int) float64 {
+func (b *Brick) toAbsolutePosition(targetPosition int, way models.PositionWay, actualPosition, actualAbsolutePosition int) float64 {
 	difference := (targetPosition-actualAbsolutePosition+180)%360 - 180
 	var newPosition float64
 
@@ -1059,7 +1201,6 @@ func (b *Brick) toAbsolutePosition(targetPosition int, way models.PositionWay, a
 			newPosition = -(float64(actualPosition) + 360 - float64(difference)) / 360.0
 		}
 	case models.Shortest:
-		fallthrough
 	default:
 		if math.Abs(float64(difference)) > 180 {
 			newPosition = (float64(actualPosition) + 360 + float64(difference)) / 360.0
@@ -1131,7 +1272,10 @@ func (b *Brick) GetHardwareVersion() (string, error) {
 
 // ReadInputVoltage reads the input voltage from the BuildHat hardware
 func (b *Brick) ReadInputVoltage() (float64, error) {
-	rawVoltage := b.getRawVoltage()
+	rawVoltage, err := b.getRawVoltage()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get raw voltage: %w", err)
+	}
 	if rawVoltage == "" {
 		return 0, fmt.Errorf("no voltage data received")
 	}
@@ -1151,7 +1295,7 @@ func (b *Brick) GetFirmwareChecksum(firmware []byte) uint32 {
 		if (check & 0x80000000) != 0 {
 			check = (check << 1) ^ 0x1d872b41
 		} else {
-			check = check << 1
+			check <<= 1
 		}
 		check = (check ^ uint32(b)) & 0xFFFFFFFF
 	}

@@ -26,32 +26,42 @@ type ActiveMotor struct {
 }
 
 // NewActiveMotor creates a new active motor
-func NewActiveMotor(brick sensors.BrickInterface, port models.SensorPort, motorType models.SensorType) *ActiveMotor {
+func NewActiveMotor(brick sensors.BrickInterface, port models.SensorPort, motorType models.SensorType) (*ActiveMotor, error) {
 	motor := &ActiveMotor{
 		BaseSensor: sensors.NewBaseSensor(brick, port, motorType),
 		powerLimit: 0.7, // Default power limit
 	}
 
 	// Initialize motor with default bias and power limit
-	brick.SetMotorBias(port, 0.3)   // Default bias
-	brick.SetMotorLimits(port, 0.7) // Default power limit
+	if err := brick.SetMotorBias(port, 0.3); err != nil {
+		return nil, err
+	}
+	if err := brick.SetMotorLimits(port, 0.7); err != nil {
+		return nil, err
+	}
 
-	return motor
+	return motor, nil
 }
+
+const (
+	technicXLMotorName       = "Technic XL motor"
+	technicLargeMotorName    = "Technic large motor"
+	spikePrimeLargeMotorName = "SPIKE Prime large motor"
+)
 
 // GetMotorName gets the name of the motor based on its type
 func (m *ActiveMotor) GetMotorName() string {
 	switch m.GetSensorType() {
-	case models.TechnicXLMotorId:
-		return "Technic XL motor"
-	case models.TechnicLargeMotorId:
-		return "Technic large motor"
+	case models.TechnicXLMotorID:
+		return technicXLMotorName
+	case models.TechnicLargeMotorID:
+		return technicLargeMotorName
 	case models.MediumLinearMotor:
 		return "Medium linear motor"
 	case models.SpikeEssentialSmallAngularMotor:
 		return "SPIKE Essential small angular motor"
 	case models.SpikePrimeLargeMotor:
-		return "SPIKE Prime large motor"
+		return spikePrimeLargeMotorName
 	case models.SpikePrimeMediumMotor:
 		return "SPIKE Prime medium motor"
 	case models.TechnicMediumAngularMotor:
@@ -192,39 +202,39 @@ func (m *ActiveMotor) Float() error {
 }
 
 // MoveToAbsolutePosition runs the motor to an absolute position
-func (m *ActiveMotor) MoveToAbsolutePosition(targetPosition int, way models.PositionWay, blocking bool, ctx context.Context) error {
+func (m *ActiveMotor) MoveToAbsolutePosition(ctx context.Context, targetPosition int, way models.PositionWay, blocking bool) error {
 	m.mu.RLock()
 	speed := m.targetSpeed
 	m.mu.RUnlock()
 
-	return m.GetBrick().MoveMotorToAbsolutePosition(m.GetPort(), targetPosition, way, speed, blocking, ctx)
+	return m.GetBrick().MoveMotorToAbsolutePosition(ctx, m.GetPort(), targetPosition, way, speed, blocking)
 }
 
 // MoveForSeconds runs the motor for an amount of seconds
-func (m *ActiveMotor) MoveForSeconds(seconds float64, blocking bool, ctx context.Context) error {
+func (m *ActiveMotor) MoveForSeconds(ctx context.Context, seconds float64, blocking bool) error {
 	m.mu.RLock()
 	speed := m.targetSpeed
 	m.mu.RUnlock()
 
-	return m.GetBrick().MoveMotorForSeconds(m.GetPort(), seconds, speed, blocking, ctx)
+	return m.GetBrick().MoveMotorForSeconds(ctx, m.GetPort(), seconds, speed, blocking)
 }
 
 // MoveToPosition runs the motor to an absolute position
-func (m *ActiveMotor) MoveToPosition(targetPosition int, blocking bool, ctx context.Context) error {
+func (m *ActiveMotor) MoveToPosition(ctx context.Context, targetPosition int, blocking bool) error {
 	m.mu.RLock()
 	speed := m.targetSpeed
 	m.mu.RUnlock()
 
-	return m.GetBrick().MoveMotorToPosition(m.GetPort(), targetPosition, speed, blocking, ctx)
+	return m.GetBrick().MoveMotorToPosition(ctx, m.GetPort(), targetPosition, speed, blocking)
 }
 
 // MoveForDegrees runs the motor for a specific number of degrees
-func (m *ActiveMotor) MoveForDegrees(targetPosition int, blocking bool, ctx context.Context) error {
+func (m *ActiveMotor) MoveForDegrees(ctx context.Context, targetPosition int, blocking bool) error {
 	m.mu.RLock()
 	speed := m.targetSpeed
 	m.mu.RUnlock()
 
-	return m.GetBrick().MoveMotorForDegrees(m.GetPort(), targetPosition, speed, blocking, ctx)
+	return m.GetBrick().MoveMotorForDegrees(ctx, m.GetPort(), targetPosition, speed, blocking)
 }
 
 // GetBrick gets the brick interface (helper method)

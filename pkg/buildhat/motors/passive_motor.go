@@ -22,17 +22,23 @@ type PassiveMotor struct {
 }
 
 // NewPassiveMotor creates a new passive motor
-func NewPassiveMotor(brick sensors.BrickInterface, port models.SensorPort, motorType models.SensorType) *PassiveMotor {
+func NewPassiveMotor(brick sensors.BrickInterface, port models.SensorPort, motorType models.SensorType) (*PassiveMotor, error) {
 	motor := &PassiveMotor{
 		BaseSensor: sensors.NewBaseSensor(brick, port, motorType),
 	}
 
 	// Initialize motor with default bias and power limit
-	brick.SetMotorBias(port, 0.3)   // Default bias
-	brick.SetMotorLimits(port, 0.7) // Default power limit
+	if err := brick.SetMotorBias(port, 0.3); err != nil {
+		return nil, err
+	}
+	if err := brick.SetMotorLimits(port, 0.7); err != nil {
+		return nil, err
+	}
 
-	return motor
+	return motor, nil
 }
+
+const systemMediumMotorName = "System medium Motor"
 
 // GetMotorName gets the name of the motor based on its type
 func (m *PassiveMotor) GetMotorName() string {
@@ -42,7 +48,7 @@ func (m *PassiveMotor) GetMotorName() string {
 	case models.SystemTurntableMotor:
 		return "System turntable motor"
 	case models.SystemMediumMotor:
-		return "System medium Motor"
+		return systemMediumMotorName
 	case models.TechnicLargeMotor:
 		return "Technic large motor"
 	case models.TechnicXLMotor:

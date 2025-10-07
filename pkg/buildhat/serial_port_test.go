@@ -31,7 +31,6 @@ func TestDetectBuildHatPort(t *testing.T) {
 }
 
 func TestRealSerialPortCreation(t *testing.T) {
-
 	// Try to create a serial port (this will likely fail on most systems)
 	_, err := NewSerialPort("/dev/ttyAMA0")
 	if err != nil {

@@ -26,7 +26,7 @@ type ColorSensor struct {
 }
 
 // NewColorSensor creates a new color sensor
-func NewColorSensor(brick BrickInterface, port models.SensorPort, sensorType models.SensorType) *ColorSensor {
+func NewColorSensor(brick BrickInterface, port models.SensorPort, sensorType models.SensorType) (*ColorSensor, error) {
 	cs := &ColorSensor{
 		ActiveSensor:    NewActiveSensor(brick, port, sensorType),
 		color:           color.RGBA{R: 0, G: 0, B: 0, A: 255},
@@ -41,18 +41,24 @@ func NewColorSensor(brick BrickInterface, port models.SensorPort, sensorType mod
 		// Send initialization command for Spike Prime color sensor
 		// This sets the sensor to color mode (-1)
 		command := fmt.Sprintf("port %d ; plimit 1 ; set -1\r", port.Byte())
-		cs.GetBrick().SendRawCommand(command)
+		if err := cs.GetBrick().SendRawCommand(command); err != nil {
+			return nil, err
+		}
 	case models.ColourAndDistanceSensor:
 		// Switch sensor on for color and distance sensor
-		cs.SwitchOn()
+		if err := cs.SwitchOn(); err != nil {
+			return nil, err
+		}
 	}
 
-	return cs
+	return cs, nil
 }
+
+const colorSensorName = "Color sensor"
 
 // GetSensorName gets the name of the sensor
 func (s *ColorSensor) GetSensorName() string {
-	return "Color sensor"
+	return colorSensorName
 }
 
 // Color gets the last measured color
@@ -191,7 +197,9 @@ func (s *ColorSensor) UpdateFromSensorData(data []string) error {
 	defer s.mu.Unlock()
 
 	// Update raw values in base sensor
-	s.ActiveSensor.UpdateFromSensorData(data)
+	if err := s.ActiveSensor.UpdateFromSensorData(data); err != nil {
+		return err
+	}
 
 	// Parse color sensor specific data
 	if len(data) >= 3 {
@@ -200,9 +208,9 @@ func (s *ColorSensor) UpdateFromSensorData(data []string) error {
 			if g, err := strconv.Atoi(data[1]); err == nil {
 				if b, err := strconv.Atoi(data[2]); err == nil {
 					s.color = color.RGBA{
-						R: uint8(clamp(r, 0, 255)),
-						G: uint8(clamp(g, 0, 255)),
-						B: uint8(clamp(b, 0, 255)),
+						R: clamp8(r),
+						G: clamp8(g),
+						B: clamp8(b),
 						A: 255,
 					}
 					s.isColorDetected = true
@@ -237,12 +245,15 @@ func (s *ColorSensor) GetTriggerFlag() *bool {
 }
 
 // Helper function to clamp values
-func clamp(value, min, max int) int {
-	if value < min {
-		return min
+func clamp8(value int) uint8 {
+	const minVal = 0
+	const maxVal = 255
+
+	if value < minVal {
+		return minVal
 	}
-	if value > max {
-		return max
+	if value > maxVal {
+		return maxVal
 	}
-	return value
+	return uint8(value)
 }

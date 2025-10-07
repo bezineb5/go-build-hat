@@ -137,22 +137,22 @@ func (m *MockBrickInterface) SetMotorBias(port models.SensorPort, bias float64) 
 	return nil
 }
 
-func (m *MockBrickInterface) MoveMotorForSeconds(port models.SensorPort, seconds float64, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrickInterface) MoveMotorForSeconds(ctx context.Context, port models.SensorPort, seconds float64, speed int, blocking bool) error {
 	m.MoveMotorForSecondsCalls = append(m.MoveMotorForSecondsCalls, MoveMotorForSecondsCall{port, seconds, speed, blocking, ctx})
 	return nil
 }
 
-func (m *MockBrickInterface) MoveMotorToPosition(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrickInterface) MoveMotorToPosition(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
 	m.MoveMotorToPositionCalls = append(m.MoveMotorToPositionCalls, MoveMotorToPositionCall{port, targetPosition, speed, blocking, ctx})
 	return nil
 }
 
-func (m *MockBrickInterface) MoveMotorToAbsolutePosition(port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrickInterface) MoveMotorToAbsolutePosition(ctx context.Context, port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool) error {
 	m.MoveMotorToAbsolutePositionCalls = append(m.MoveMotorToAbsolutePositionCalls, MoveMotorToAbsolutePositionCall{port, targetPosition, way, speed, blocking, ctx})
 	return nil
 }
 
-func (m *MockBrickInterface) MoveMotorForDegrees(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error {
+func (m *MockBrickInterface) MoveMotorForDegrees(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error {
 	m.MoveMotorForDegreesCalls = append(m.MoveMotorForDegreesCalls, MoveMotorForDegreesCall{port, targetPosition, speed, blocking, ctx})
 	return nil
 }
@@ -406,7 +406,10 @@ func TestButtonSensor(t *testing.T) {
 
 func TestColorSensor(t *testing.T) {
 	mockBrick := &MockBrickInterface{}
-	sensor := NewColorSensor(mockBrick, models.PortA, models.SpikePrimeColorSensor)
+	sensor, err := NewColorSensor(mockBrick, models.PortA, models.SpikePrimeColorSensor)
+	if err != nil {
+		t.Fatalf("Failed to create color sensor: %v", err)
+	}
 
 	// Test that initialization sent the proper command for SpikePrimeColorSensor
 	if len(mockBrick.SendRawCommandCalls) != 1 {
@@ -494,8 +497,7 @@ func TestForceSensor(t *testing.T) {
 		t.Error("Expected continuous measurement to be false initially")
 	}
 
-	err := sensor.SetContinuousMeasurement(true)
-	if err != nil {
+	if err := sensor.SetContinuousMeasurement(true); err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
@@ -507,8 +509,7 @@ func TestForceSensor(t *testing.T) {
 		t.Errorf("Expected 1 SelectModeAndRead call, got %d", len(mockBrick.SelectModeAndReadCalls))
 	}
 
-	err = sensor.SetContinuousMeasurement(false)
-	if err != nil {
+	if err := sensor.SetContinuousMeasurement(false); err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
@@ -523,7 +524,10 @@ func TestForceSensor(t *testing.T) {
 
 func TestUltrasonicDistanceSensor(t *testing.T) {
 	mockBrick := &MockBrickInterface{}
-	sensor := NewUltrasonicDistanceSensor(mockBrick, models.PortA)
+	sensor, err := NewUltrasonicDistanceSensor(mockBrick, models.PortA)
+	if err != nil {
+		t.Fatalf("Failed to create ultrasonic distance sensor: %v", err)
+	}
 
 	// Test that initialization sent the proper command for UltrasonicDistanceSensor
 	if len(mockBrick.SendRawCommandCalls) != 1 {
@@ -555,8 +559,7 @@ func TestUltrasonicDistanceSensor(t *testing.T) {
 		t.Error("Expected continuous measurement to be false initially")
 	}
 
-	err := sensor.SetContinuousMeasurement(true)
-	if err != nil {
+	if err := sensor.SetContinuousMeasurement(true); err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
@@ -568,8 +571,7 @@ func TestUltrasonicDistanceSensor(t *testing.T) {
 		t.Errorf("Expected 1 SelectModeAndRead call, got %d", len(mockBrick.SelectModeAndReadCalls))
 	}
 
-	err = sensor.SetContinuousMeasurement(false)
-	if err != nil {
+	if err := sensor.SetContinuousMeasurement(false); err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 

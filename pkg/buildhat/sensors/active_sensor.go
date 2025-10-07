@@ -40,9 +40,13 @@ func NewActiveSensor(brick BrickInterface, port models.SensorPort, sensorType mo
 	}
 }
 
+const (
+	activeSensorName = "Active sensor"
+)
+
 // GetSensorName gets the name of the sensor
 func (s *ActiveSensor) GetSensorName() string {
-	return "Active sensor"
+	return activeSensorName
 }
 
 // ValuesAsString gets the raw values as strings

@@ -30,11 +30,18 @@ const (
 	LedWhite
 )
 
+const (
+	ledOffName     = "Off"
+	ledGreenName   = "Green"
+	ledOrangeName  = "Orange"
+	ledUnknownName = "Unknown"
+)
+
 // String returns the string representation of the LED color
 func (lc LedColor) String() string {
 	switch lc {
 	case LedOff:
-		return "Off"
+		return ledOffName
 	case LedBlack:
 		return "Black"
 	case LedBrown:
@@ -48,16 +55,16 @@ func (lc LedColor) String() string {
 	case LedPaleGreen:
 		return "Pale Green"
 	case LedGreen:
-		return "Green"
+		return ledGreenName
 	case LedYellow:
 		return "Yellow"
 	case LedOrange:
-		return "Orange"
+		return ledOrangeName
 	case LedRed:
 		return "Red"
 	case LedWhite:
 		return "White"
 	default:
-		return "Unknown"
+		return ledUnknownName
 	}
 }

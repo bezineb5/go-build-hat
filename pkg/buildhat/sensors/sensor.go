@@ -60,9 +60,13 @@ func NewBaseSensor(brick BrickInterface, port models.SensorPort, sensorType mode
 	}
 }
 
+const (
+	genericSensorName = "Generic sensor"
+)
+
 // GetSensorName gets the name of the sensor
 func (s *BaseSensor) GetSensorName() string {
-	return "Generic sensor"
+	return genericSensorName
 }
 
 // GetPort gets the sensor port
@@ -174,10 +178,10 @@ type BrickInterface interface {
 	SetPowerLevel(port models.SensorPort, powerPercent int) error
 	SetMotorLimits(port models.SensorPort, powerLimit float64) error
 	SetMotorBias(port models.SensorPort, bias float64) error
-	MoveMotorForSeconds(port models.SensorPort, seconds float64, speed int, blocking bool, ctx context.Context) error
-	MoveMotorToPosition(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error
-	MoveMotorToAbsolutePosition(port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool, ctx context.Context) error
-	MoveMotorForDegrees(port models.SensorPort, targetPosition int, speed int, blocking bool, ctx context.Context) error
+	MoveMotorForSeconds(ctx context.Context, port models.SensorPort, seconds float64, speed int, blocking bool) error
+	MoveMotorToPosition(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error
+	MoveMotorToAbsolutePosition(ctx context.Context, port models.SensorPort, targetPosition int, way models.PositionWay, speed int, blocking bool) error
+	MoveMotorForDegrees(ctx context.Context, port models.SensorPort, targetPosition, speed int, blocking bool) error
 	FloatMotor(port models.SensorPort) error
 
 	// Sensor control methods

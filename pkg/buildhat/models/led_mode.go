@@ -30,6 +30,6 @@ func (lm LedMode) String() string {
 	case Both:
 		return "Both"
 	default:
-		return "Unknown"
+		return ledUnknownName
 	}
 }

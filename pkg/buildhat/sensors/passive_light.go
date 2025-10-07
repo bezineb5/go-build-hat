@@ -27,9 +27,11 @@ func NewPassiveLight(brick BrickInterface, port models.SensorPort) *PassiveLight
 	}
 }
 
+const passiveLightSensorName = "Passive light"
+
 // GetSensorName gets the name of the sensor
 func (s *PassiveLight) GetSensorName() string {
-	return "Passive light"
+	return passiveLightSensorName
 }
 
 // Brightness gets the brightness from 0 to 100
@@ -75,10 +77,9 @@ func (s *PassiveLight) SetIsOn(on bool) error {
 		if s.isOn {
 			// Turn on the light with current brightness
 			return s.GetBrick().SetPowerLevel(s.GetPort(), s.brightness)
-		} else {
-			// Turn off the light by setting brightness to 0
-			return s.GetBrick().SetPowerLevel(s.GetPort(), 0)
 		}
+		// Turn off the light by setting brightness to 0
+		return s.GetBrick().SetPowerLevel(s.GetPort(), 0)
 	}
 
 	return nil
@@ -118,7 +119,7 @@ func (s *PassiveLight) Off() error {
 }
 
 // UpdateFromSensorData updates sensor values from raw sensor data
-func (s *PassiveLight) UpdateFromSensorData(data []string) error {
+func (s *PassiveLight) UpdateFromSensorData(_ []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

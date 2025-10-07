@@ -25,4 +25,3 @@ func (tv TypeValues) String() string {
 		return "Unknown"
 	}
 }
-
