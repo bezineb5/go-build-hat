@@ -33,7 +33,7 @@ func NewActiveMotor(brick sensors.BrickInterface, port models.SensorPort, motorT
 	}
 
 	// Initialize motor with default bias and power limit
-	brick.SetMotorBias(port, 0.0)   // Default bias
+	brick.SetMotorBias(port, 0.3)   // Default bias
 	brick.SetMotorLimits(port, 0.7) // Default power limit
 
 	return motor
