@@ -10,7 +10,7 @@ func TestMotor_SetDefaultSpeed(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Test valid speed
 	err := motor.SetDefaultSpeed(50)
@@ -39,7 +39,7 @@ func TestMotor_SetSpeedUnitRPM(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	motor.SetSpeedUnitRPM(true)
 	if !motor.rpm {
@@ -56,13 +56,12 @@ func TestMotor_RunForRotations(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
 	// Queue motor position data
 	mockPort.SimulateSensorResponse("0", 0, "0 0 0") // speed, position, aposition
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Run for 2 rotations at speed 50
 	err := motor.RunForRotations(2.0, 50)
@@ -93,13 +92,12 @@ func TestMotor_RunForDegrees(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
 	// Queue motor position data
 	mockPort.SimulateSensorResponse("0", 0, "0 0 0")
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Run for 360 degrees at speed 50
 	err := motor.RunForDegrees(360, 50)
@@ -121,22 +119,21 @@ func TestMotor_RunForDegrees(t *testing.T) {
 	}
 }
 
-func TestMotor_RunForSeconds(t *testing.T) {
+func TestMotor_RunForDuration(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Run for 0.5 seconds to make test faster
 	start := time.Now()
-	err := motor.RunForSeconds(0.5, 50)
+	err := motor.RunForDuration(500*time.Millisecond, 50)
 	elapsed := time.Since(start)
 
 	if err != nil {
-		t.Fatalf("RunForSeconds failed: %v", err)
+		t.Fatalf("RunForDuration failed: %v", err)
 	}
 
 	// Should take approximately 0.5 seconds
@@ -159,18 +156,48 @@ func TestMotor_RunForSeconds(t *testing.T) {
 }
 
 func TestMotor_RunToPosition(t *testing.T) {
-	t.Skip("Skipping - requires motor position data which has async timing issues in mock environment")
+	brick := TestBrick(t)
+	defer CleanupTestBrick(brick)
 
-	// Note: RunToPosition calls getData() internally which requires motor data to be available
-	// In real hardware, the motor continuously sends position data
-	// Testing this properly would require a more sophisticated mock that simulates continuous data
+	mockPort := brick.GetMockPort()
+
+	motor := brick.Motor(PortA)
+
+	// RunToPosition needs to get current position and absolute position
+	// Queue motor data: speed, position, absolute_position
+	mockPort.SimulateSensorResponse("A", 0, "0 0 0") // Initial position at 0
+	time.Sleep(10 * time.Millisecond)                // Let reader cache it
+
+	// Test basic position move
+	err := motor.RunToPosition(90, 50, DirectionShortest)
+	if err != nil {
+		t.Fatalf("RunToPosition failed: %v", err)
+	}
+
+	// Verify commands were sent
+	writeHistory := mockPort.GetWriteHistory()
+	if len(writeHistory) == 0 {
+		t.Fatal("Expected commands to be sent")
+	}
+
+	// Should contain port selection and ramp/movement commands
+	hasPortCmd := false
+	for _, cmd := range writeHistory {
+		if strings.Contains(cmd, "port 0") {
+			hasPortCmd = true
+			break
+		}
+	}
+	if !hasPortCmd {
+		t.Error("Expected port command to be sent")
+	}
 }
 
 func TestMotor_RunToPosition_InvalidDirection(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Test with invalid direction (999 is not a valid MotorDirection)
 	err := motor.RunToPosition(90, 50, MotorDirection(999))
@@ -183,7 +210,7 @@ func TestMotor_RunToPosition_InvalidAngle(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Test with invalid angle (too large)
 	err := motor.RunToPosition(200, 50, DirectionShortest)
@@ -202,10 +229,9 @@ func TestMotor_StartStop(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Start motor
 	err := motor.Start(50)
@@ -247,9 +273,7 @@ func TestMotor_Start_AlreadyRunning(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
-
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 	motor.runMode = MotorRunModeFree
 	motor.currentSpeed = 50
 
@@ -264,7 +288,7 @@ func TestMotor_Start_InvalidSpeed(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Test invalid speed
 	err := motor.Start(150)
@@ -277,13 +301,12 @@ func TestMotor_GetPosition(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
 	// Queue motor data: speed=10, position=720, aposition=0
 	mockPort.SimulateSensorResponse("0", 0, "10 720 0")
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	position, err := motor.GetPosition()
 	if err != nil {
@@ -299,13 +322,12 @@ func TestMotor_GetAbsolutePosition(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
 	// Queue motor data: speed=10, position=720, aposition=90
 	mockPort.SimulateSensorResponse("0", 0, "10 720 90")
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	apos, err := motor.GetAbsolutePosition()
 	if err != nil {
@@ -321,13 +343,12 @@ func TestMotor_GetSpeed(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
 	// Queue motor data: speed=25, position=0, aposition=0
 	mockPort.SimulateSensorResponse("0", 0, "25 0 0")
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	speed, err := motor.GetSpeed()
 	if err != nil {
@@ -343,10 +364,9 @@ func TestMotor_SetPowerLimit(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Set valid power limit
 	err := motor.SetPowerLimit(0.5)
@@ -384,10 +404,9 @@ func TestMotor_SetPWMParams(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Set valid PWM params
 	err := motor.SetPWMParams(0.7, 0.02)
@@ -413,10 +432,9 @@ func TestMotor_PWM(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Set valid PWM value
 	err := motor.PWM(0.5)
@@ -448,10 +466,9 @@ func TestMotor_PresetPosition(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	err := motor.PresetPosition()
 	if err != nil {
@@ -476,10 +493,9 @@ func TestMotor_CoastAndFloat(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
 	mockPort := brick.GetMockPort()
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Test Coast
 	err := motor.Coast()
@@ -511,7 +527,7 @@ func TestMotor_SetRelease(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	motor := brick.Motor("A")
+	motor := brick.Motor(PortA)
 
 	// Default should be true
 	if !motor.release {

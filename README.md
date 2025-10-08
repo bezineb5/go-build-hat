@@ -73,10 +73,10 @@ func main() {
     }
 
     // Create motor on port A
-    motor := brick.Motor("A")
+    motor := brick.Motor(buildhat.PortA)
     
     // Run motor for 2 seconds at 50% speed
-    if err := motor.RunForSeconds(2, 50); err != nil {
+    if err := motor.RunForDuration(2*time.Second, 50); err != nil {
         log.Fatal(err)
     }
     
@@ -86,7 +86,7 @@ func main() {
     }
     
     // Create a color sensor on port B
-    colorSensor := brick.ColorSensor("B")
+    colorSensor := brick.ColorSensor(buildhat.PortB)
     color, err := colorSensor.GetColor()
     if err != nil {
         log.Fatal(err)
@@ -150,17 +150,17 @@ func (b *Brick) Initialize() error
 #### Device Access
 
 ```go
-func (b *Brick) Motor(port string) *Motor                          // "A", "B", "C", "D"
-func (b *Brick) PassiveMotor(port string) *PassiveMotor
-func (b *Brick) ColorSensor(port string) *ColorSensor
-func (b *Brick) DistanceSensor(port string) *DistanceSensor
-func (b *Brick) ForceSensor(port string) *ForceSensor
-func (b *Brick) ButtonSensor(port string) *ButtonSensor
-func (b *Brick) ColorDistanceSensor(port string) *ColorDistanceSensor
-func (b *Brick) TiltSensor(port string) *TiltSensor
-func (b *Brick) MotionSensor(port string) *MotionSensor
-func (b *Brick) Light(port string) *Light
-func (b *Brick) Matrix(port string) *Matrix
+func (b *Brick) Motor(port BuildHatPort) *Motor                    // PortA, PortB, PortC, PortD
+func (b *Brick) PassiveMotor(port BuildHatPort) *PassiveMotor
+func (b *Brick) ColorSensor(port BuildHatPort) *ColorSensor
+func (b *Brick) DistanceSensor(port BuildHatPort) *DistanceSensor
+func (b *Brick) ForceSensor(port BuildHatPort) *ForceSensor
+func (b *Brick) ButtonSensor(port BuildHatPort) *ButtonSensor
+func (b *Brick) ColorDistanceSensor(port BuildHatPort) *ColorDistanceSensor
+func (b *Brick) TiltSensor(port BuildHatPort) *TiltSensor
+func (b *Brick) MotionSensor(port BuildHatPort) *MotionSensor
+func (b *Brick) Light(port BuildHatPort) *Light
+func (b *Brick) Matrix(port BuildHatPort) *Matrix
 ```
 
 #### Device Information
@@ -191,7 +191,7 @@ func (m *Motor) SetPWMParams(pwmThresh, minPWM float64) error
 func (m *Motor) SetRelease(release bool)
 
 // Movement
-func (m *Motor) RunForSeconds(seconds float64, speed int) error
+func (m *Motor) RunForDuration(duration time.Duration, speed int) error
 func (m *Motor) RunForDegrees(degrees, speed int) error
 func (m *Motor) RunForRotations(rotations float64, speed int) error
 func (m *Motor) RunToPosition(degrees, speed int, direction MotorDirection) error
@@ -339,12 +339,12 @@ const (
 All methods return errors that should be checked:
 
 ```go
-motor := brick.Motor("A")
-if err := motor.RunForSeconds(2, 50); err != nil {
+motor := brick.Motor(buildhat.PortA)
+if err := motor.RunForDuration(2*time.Second, 50); err != nil {
     log.Printf("Failed to run motor: %v", err)
 }
 
-sensor := brick.ColorSensor("B")
+sensor := brick.ColorSensor(buildhat.PortB)
 color, err := sensor.GetColor()
 if err != nil {
     log.Printf("Failed to read sensor: %v", err)
@@ -367,13 +367,13 @@ The library is thread-safe and can be used from multiple goroutines:
 ```go
 // Safe to use from multiple goroutines
 go func() {
-    motor1 := brick.Motor("A")
-    motor1.RunForSeconds(2, 50)
+    motor1 := brick.Motor(buildhat.PortA)
+    motor1.RunForDuration(2*time.Second, 50)
 }()
 
 go func() {
-    motor2 := brick.Motor("B")
-    motor2.RunForSeconds(2, -50)
+    motor2 := brick.Motor(buildhat.PortB)
+    motor2.RunForDuration(2*time.Second, -50)
 }()
 ```
 

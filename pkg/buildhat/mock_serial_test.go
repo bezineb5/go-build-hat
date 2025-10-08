@@ -1,13 +1,14 @@
 package buildhat
 
 import (
+	"io"
 	"log/slog"
 	"testing"
 	"time"
 )
 
 func TestMockSerialPort_Read(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -17,8 +18,8 @@ func TestMockSerialPort_Read(t *testing.T) {
 	// Test reading when no data is queued
 	buffer := make([]byte, 10)
 	n, err := mockPort.Read(buffer)
-	if err == nil {
-		t.Error("Expected error when no data is available")
+	if err != nil {
+		t.Errorf("Expected no error when no data is available, got %v", err)
 	}
 	if n != 0 {
 		t.Errorf("Expected 0 bytes read, got %d", n)
@@ -38,7 +39,7 @@ func TestMockSerialPort_Read(t *testing.T) {
 }
 
 func TestMockSerialPort_Read_WhenClosed(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -53,7 +54,7 @@ func TestMockSerialPort_Read_WhenClosed(t *testing.T) {
 }
 
 func TestMockSerialPort_Write_WhenClosed(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -67,7 +68,7 @@ func TestMockSerialPort_Write_WhenClosed(t *testing.T) {
 }
 
 func TestMockSerialPort_SetReadTimeout(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -81,7 +82,7 @@ func TestMockSerialPort_SetReadTimeout(t *testing.T) {
 }
 
 func TestMockSerialPort_SetWriteTimeout(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -95,7 +96,7 @@ func TestMockSerialPort_SetWriteTimeout(t *testing.T) {
 }
 
 func TestMockSerialPort_Break(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -109,7 +110,7 @@ func TestMockSerialPort_Break(t *testing.T) {
 }
 
 func TestMockSerialPort_Drain(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -123,7 +124,7 @@ func TestMockSerialPort_Drain(t *testing.T) {
 }
 
 func TestMockSerialPort_ResetInputBuffer(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -137,7 +138,7 @@ func TestMockSerialPort_ResetInputBuffer(t *testing.T) {
 }
 
 func TestMockSerialPort_ResetOutputBuffer(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -151,7 +152,7 @@ func TestMockSerialPort_ResetOutputBuffer(t *testing.T) {
 }
 
 func TestMockSerialPort_SetDTR(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -170,7 +171,7 @@ func TestMockSerialPort_SetDTR(t *testing.T) {
 }
 
 func TestMockSerialPort_SetRTS(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -189,7 +190,7 @@ func TestMockSerialPort_SetRTS(t *testing.T) {
 }
 
 func TestMockSerialPort_GetModemStatusBits(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -206,7 +207,7 @@ func TestMockSerialPort_GetModemStatusBits(t *testing.T) {
 }
 
 func TestMockSerialPort_SetMode(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -220,7 +221,7 @@ func TestMockSerialPort_SetMode(t *testing.T) {
 }
 
 func TestMockSerialPort_Reset(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -244,9 +245,12 @@ func TestMockSerialPort_Reset(t *testing.T) {
 
 	// Verify read buffer is cleared
 	buffer := make([]byte, 10)
-	_, err := mockPort.Read(buffer)
-	if err == nil {
-		t.Error("Expected error when reading from reset port")
+	n, err := mockPort.Read(buffer)
+	if err != nil {
+		t.Errorf("Expected no error when reading from reset port, got %v", err)
+	}
+	if n != 0 {
+		t.Error("Expected 0 bytes after reset")
 	}
 
 	// Verify port is not closed after reset
@@ -257,7 +261,7 @@ func TestMockSerialPort_Reset(t *testing.T) {
 }
 
 func TestMockSerialPort_GetReadHistory(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -284,7 +288,7 @@ func TestMockSerialPort_GetReadHistory(t *testing.T) {
 }
 
 func TestMockSerialPort_GetLastWrite(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -309,7 +313,7 @@ func TestMockSerialPort_GetLastWrite(t *testing.T) {
 }
 
 func TestMockSerialPort_GetWriteCount(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -335,7 +339,7 @@ func TestMockSerialPort_GetWriteCount(t *testing.T) {
 }
 
 func TestMockSerialPort_SimulateDeviceResponse(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -361,7 +365,7 @@ func TestMockSerialPort_SimulateDeviceResponse(t *testing.T) {
 }
 
 func TestMockSerialPort_SimulateFirmwareBootloader(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -384,7 +388,7 @@ func TestMockSerialPort_SimulateFirmwareBootloader(t *testing.T) {
 }
 
 func TestMockSerialPort_SimulateFirmwareNormal(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -410,7 +414,7 @@ func TestMockSerialPort_SimulateFirmwareNormal(t *testing.T) {
 }
 
 func TestMockSerialPort_SimulateDeviceList(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 

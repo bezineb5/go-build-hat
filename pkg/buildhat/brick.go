@@ -24,10 +24,10 @@ type Brick struct {
 	mu      sync.RWMutex
 
 	// Connection state
-	connections    [4]*Connection
+	connections    [NumPorts]*Connection
 	vinFutures     []chan float64
 	versionFutures []chan string
-	sensorFutures  [4][]chan []interface{} // Sensor data futures per port
+	sensorFutures  [NumPorts][]chan []any // Sensor data futures per port
 
 	// Firmware management
 	firmwareManager *FirmwareManager
@@ -39,7 +39,7 @@ type Connection struct {
 	Connected  bool
 	SimpleMode int
 	CombiMode  int
-	Data       []interface{}
+	Data       []any
 }
 
 // NewBrick creates a new BuildHat instance
@@ -61,15 +61,15 @@ func NewBrick(reader io.Reader, writer io.Writer, logger *slog.Logger) *Brick {
 	}
 
 	// Initialize sensor futures for each port
-	for i := 0; i < 4; i++ {
-		brick.sensorFutures[i] = make([]chan []interface{}, 0)
+	for i := range NumPorts {
+		brick.sensorFutures[i] = make([]chan []any, 0)
 	}
 
 	// Initialize firmware manager
 	brick.firmwareManager = NewFirmwareManager(brick)
 
 	// Initialize connections
-	for i := 0; i < 4; i++ {
+	for i := range NumPorts {
 		brick.connections[i] = &Connection{
 			TypeID:    -1,
 			Connected: false,
@@ -313,7 +313,7 @@ func (b *Brick) handleSensorData(portID int, line string) {
 
 	// Parse sensor data (simplified)
 	parts := strings.Split(line[5:], " ")
-	data := make([]interface{}, 0, len(parts))
+	data := make([]any, 0, len(parts))
 
 	for _, part := range parts {
 		if part == "" {
@@ -395,9 +395,20 @@ func (b *Brick) ScanDevices() error {
 }
 
 // getSensorData waits for sensor data from a specific port
-func (b *Brick) getSensorData(port int) ([]interface{}, error) {
+func (b *Brick) getSensorData(port int) ([]any, error) {
 	b.mu.Lock()
-	future := make(chan []interface{}, 1)
+
+	// Check if we already have cached data
+	if len(b.connections[port].Data) > 0 {
+		data := b.connections[port].Data
+		// Clear cached data so next call gets fresh data
+		b.connections[port].Data = nil
+		b.mu.Unlock()
+		return data, nil
+	}
+
+	// No cached data, create a future and wait for new data
+	future := make(chan []any, 1)
 	b.sensorFutures[port] = append(b.sensorFutures[port], future)
 	b.mu.Unlock()
 
@@ -410,21 +421,21 @@ func (b *Brick) getSensorData(port int) ([]interface{}, error) {
 }
 
 // GetDeviceInfo returns information about devices on all ports
-func (b *Brick) GetDeviceInfo() map[string]DeviceInfo {
+func (b *Brick) GetDeviceInfo() map[BuildHatPort]DeviceInfo {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	devices := make(map[string]DeviceInfo)
-	for i := 0; i < 4; i++ {
-		port := string(rune('A' + i))
+	devices := make(map[BuildHatPort]DeviceInfo)
+	for i := range NumPorts {
+		port := BuildHatPort(i)
 		conn := b.connections[i]
 
 		devices[port] = DeviceInfo{
-			Port:       port,
-			TypeID:     conn.TypeID,
-			Connected:  conn.Connected,
-			Name:       getDeviceName(conn.TypeID),
-			DeviceType: getDeviceType(conn.TypeID),
+			Port:      port,
+			TypeID:    conn.TypeID,
+			Connected: conn.Connected,
+			Name:      getDeviceName(conn.TypeID),
+			Category:  getDeviceCategory(conn.TypeID),
 		}
 	}
 
@@ -433,11 +444,11 @@ func (b *Brick) GetDeviceInfo() map[string]DeviceInfo {
 
 // DeviceInfo represents information about a device
 type DeviceInfo struct {
-	Port       string
-	TypeID     int
-	Connected  bool
-	Name       string
-	DeviceType string
+	Port      BuildHatPort
+	TypeID    int
+	Connected bool
+	Name      string
+	Category  DeviceCategory
 }
 
 // GetEmbeddedFirmwareVersion returns the version of the embedded firmware

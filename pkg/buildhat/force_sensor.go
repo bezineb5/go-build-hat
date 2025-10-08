@@ -5,11 +5,10 @@ import (
 )
 
 // ForceSensor creates a force sensor interface for the specified port
-func (b *Brick) ForceSensor(port string) *ForceSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) ForceSensor(port BuildHatPort) *ForceSensor {
 	return &ForceSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 

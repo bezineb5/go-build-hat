@@ -2,7 +2,6 @@ package buildhat
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -61,7 +60,16 @@ func (m *MockSerialPort) Read(data []byte) (int, error) {
 	}
 
 	if len(m.readBuffer) == 0 {
-		return 0, io.EOF
+		// Release lock and wait a bit for data to arrive
+		m.mu.Unlock()
+		time.Sleep(1 * time.Millisecond)
+		m.mu.Lock()
+
+		// Check again after waiting
+		if len(m.readBuffer) == 0 {
+			// Still no data, return 0 bytes with no error
+			return 0, nil
+		}
 	}
 
 	n := copy(data, m.readBuffer)

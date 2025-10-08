@@ -9,12 +9,10 @@ func TestButtonSensor_IsPressed_True(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
-
 	mockPort := brick.GetMockPort()
 	mockPort.SimulateSensorResponse("A", 0, "1")
 
-	sensor := brick.ButtonSensor("A")
+	sensor := brick.ButtonSensor(PortA)
 
 	pressed, err := sensor.IsPressed()
 	if err != nil {
@@ -41,12 +39,10 @@ func TestButtonSensor_IsPressed_False(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
-
 	mockPort := brick.GetMockPort()
 	mockPort.SimulateSensorResponse("B", 0, "0")
 
-	sensor := brick.ButtonSensor("B")
+	sensor := brick.ButtonSensor(PortB)
 
 	pressed, err := sensor.IsPressed()
 	if err != nil {
@@ -63,13 +59,13 @@ func TestButtonSensor_AllPorts(t *testing.T) {
 	defer CleanupTestBrick(brick)
 
 	ports := []struct {
-		port     string
+		port     BuildHatPort
 		expected int
 	}{
-		{"A", 0},
-		{"B", 1},
-		{"C", 2},
-		{"D", 3},
+		{PortA, 0},
+		{PortB, 1},
+		{PortC, 2},
+		{PortD, 3},
 	}
 
 	for _, tc := range ports {

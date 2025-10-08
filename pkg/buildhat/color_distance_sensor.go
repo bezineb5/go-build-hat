@@ -5,11 +5,10 @@ import (
 )
 
 // ColorDistanceSensor creates a color distance sensor interface for the specified port
-func (b *Brick) ColorDistanceSensor(port string) *ColorDistanceSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) ColorDistanceSensor(port BuildHatPort) *ColorDistanceSensor {
 	return &ColorDistanceSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 
@@ -20,21 +19,21 @@ type ColorDistanceSensor struct {
 }
 
 // GetColor gets the current color reading as RGBA
-func (s *ColorDistanceSensor) GetColor() (struct{ R, G, B, A uint8 }, error) {
+func (s *ColorDistanceSensor) GetColor() (Color, error) {
 	// Set to color mode (mode 0)
 	cmd := fmt.Sprintf("port %d ; select 0", s.port)
 	if err := s.brick.writeCommand(cmd); err != nil {
-		return struct{ R, G, B, A uint8 }{}, err
+		return Color{}, err
 	}
 
 	// Wait for sensor data
 	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
-		return struct{ R, G, B, A uint8 }{}, err
+		return Color{}, err
 	}
 
 	if len(data) < 4 {
-		return struct{ R, G, B, A uint8 }{}, fmt.Errorf("insufficient color data received")
+		return Color{}, fmt.Errorf("insufficient color data received")
 	}
 
 	// Convert from raw values to RGB
@@ -43,7 +42,7 @@ func (s *ColorDistanceSensor) GetColor() (struct{ R, G, B, A uint8 }, error) {
 	b, _ := data[2].(int)
 	a, _ := data[3].(int)
 
-	return struct{ R, G, B, A uint8 }{
+	return Color{
 		R: clamp8(r),
 		G: clamp8(g),
 		B: clamp8(b),
@@ -101,15 +100,4 @@ func (s *ColorDistanceSensor) GetReflectedLight() (int, error) {
 	}
 
 	return 0, fmt.Errorf("invalid reflected light data type")
-}
-
-func clamp8(value int) uint8 {
-	if value < 0 {
-		return 0
-	}
-	if value > 255 {
-		return 255
-	}
-
-	return uint8(value)
 }

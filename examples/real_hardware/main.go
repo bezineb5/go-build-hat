@@ -66,6 +66,8 @@ func main() {
 			testVoltage(brick, logger)
 		case "5":
 			testMotorControl(brick, logger)
+		case "6":
+			testColorSensor(brick, logger)
 		case "q", "quit", "exit":
 			fmt.Println("👋 Goodbye!")
 			return
@@ -84,6 +86,7 @@ func showMenu() {
 	fmt.Println("3. Read Firmware Version")
 	fmt.Println("4. Read Input Voltage")
 	fmt.Println("5. Test Motor Control")
+	fmt.Println("6. Test Color Sensor")
 	fmt.Println("q. Quit")
 	fmt.Println()
 }
@@ -118,7 +121,7 @@ func scanDevices(brick *buildhat.Brick, logger *slog.Logger) {
 	devices := brick.GetDeviceInfo()
 	for port, info := range devices {
 		if info.Connected {
-			fmt.Printf("Port %s: %s (%s)\n", port, info.Name, info.DeviceType)
+			fmt.Printf("Port %s: %s (%s)\n", port, info.Name, info.Category)
 		} else {
 			fmt.Printf("Port %s: No device\n", port)
 		}
@@ -181,16 +184,18 @@ func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 
 	// Check if we have any motors connected
 	devices := brick.GetDeviceInfo()
-	var motorPort string
+	var motorPort buildhat.BuildHatPort
+	var motorFound bool
 
 	for port, info := range devices {
-		if info.Connected && info.DeviceType == "Motor" {
+		if info.Connected && info.Category == buildhat.DeviceCategoryMotor {
 			motorPort = port
+			motorFound = true
 			break
 		}
 	}
 
-	if motorPort == "" {
+	if !motorFound {
 		fmt.Println("❌ No motor found. Please connect a motor to any port.")
 		return
 	}
@@ -245,7 +250,7 @@ func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 
 	// Test 5: Run for 2 seconds
 	fmt.Println("\n⏱️  Running motor for 2 seconds at 50% speed...")
-	if err := motor.RunForSeconds(2, 50); err != nil {
+	if err := motor.RunForDuration(2*time.Second, 50); err != nil {
 		logger.Error("Failed to run motor", "error", err)
 	} else {
 		fmt.Println("✅ Completed 2 seconds")
@@ -253,7 +258,7 @@ func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 
 	// Test 6: Run for 2 seconds in reverse
 	fmt.Println("\n⏱️  Running motor for 2 seconds at -50% speed (reverse)...")
-	if err := motor.RunForSeconds(2, -50); err != nil {
+	if err := motor.RunForDuration(2*time.Second, -50); err != nil {
 		logger.Error("Failed to run motor in reverse", "error", err)
 	} else {
 		fmt.Println("✅ Completed reverse run")
@@ -312,4 +317,201 @@ func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 	fmt.Println("\n🎉 Motor control test completed!")
 	fmt.Println("Press Enter to continue...")
 	bufio.NewReader(os.Stdin).ReadString('\n')
+}
+
+func testColorSensor(brick *buildhat.Brick, logger *slog.Logger) {
+	fmt.Println("🎨 Testing color sensor...")
+
+	// Check if we have any color sensors connected
+	devices := brick.GetDeviceInfo()
+	var sensorPort buildhat.BuildHatPort
+	var sensorFound bool
+
+	for port, info := range devices {
+		if info.Connected && (info.Name == "ColorSensor" || info.Name == "Color Sensor") {
+			sensorPort = port
+			sensorFound = true
+			break
+		}
+	}
+
+	if !sensorFound {
+		fmt.Println("❌ No color sensor found. Please connect a color sensor to any port.")
+		return
+	}
+
+	fmt.Printf("✅ Color sensor detected on port %s\n", sensorPort)
+
+	// Create color sensor instance
+	sensor := brick.ColorSensor(sensorPort)
+
+	// Test 1: Read RGB color
+	fmt.Println("\n🌈 Reading RGB color values...")
+	fmt.Println("   (Place different colored objects in front of the sensor)")
+
+	for i := 0; i < 5; i++ {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		color, err := sensor.GetColor()
+		if err != nil {
+			logger.Error("Failed to read color", "error", err)
+			fmt.Printf("   ❌ Reading %d: Failed\n", i+1)
+		} else {
+			fmt.Printf("   📊 Reading %d: R=%3d, G=%3d, B=%3d, I=%3d",
+				i+1, color.R, color.G, color.B, color.A)
+
+			// Try to identify basic colors
+			colorName := identifyColor(color)
+			if colorName != "" {
+				fmt.Printf(" (%s)", colorName)
+			}
+			fmt.Println()
+		}
+	}
+
+	// Test 2: Read reflected light
+	fmt.Println("\n💡 Reading reflected light (0-100%)...")
+	fmt.Println("   (Move objects closer/farther from the sensor)")
+
+	for i := 0; i < 5; i++ {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		light, err := sensor.GetReflectedLight()
+		if err != nil {
+			logger.Error("Failed to read reflected light", "error", err)
+			fmt.Printf("   ❌ Reading %d: Failed\n", i+1)
+		} else {
+			// Create a simple bar chart
+			bar := createBar(light, 100)
+			fmt.Printf("   📊 Reading %d: %3d%% %s\n", i+1, light, bar)
+		}
+	}
+
+	// Test 3: Read ambient light
+	fmt.Println("\n🔆 Reading ambient light (0-100%)...")
+	fmt.Println("   (Try covering/uncovering the sensor)")
+
+	for i := 0; i < 5; i++ {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		light, err := sensor.GetAmbientLight()
+		if err != nil {
+			logger.Error("Failed to read ambient light", "error", err)
+			fmt.Printf("   ❌ Reading %d: Failed\n", i+1)
+		} else {
+			// Create a simple bar chart
+			bar := createBar(light, 100)
+			fmt.Printf("   📊 Reading %d: %3d%% %s\n", i+1, light, bar)
+		}
+	}
+
+	// Test 4: Continuous color monitoring
+	fmt.Println("\n🔄 Continuous color monitoring (5 seconds)...")
+	fmt.Println("   (Move colored objects in front of the sensor)")
+
+	startTime := time.Now()
+	lastColorName := ""
+
+	for time.Since(startTime) < 5*time.Second {
+		color, err := sensor.GetColor()
+		if err != nil {
+			logger.Warn("Failed to read color during monitoring", "error", err)
+		} else {
+			colorName := identifyColor(color)
+			if colorName != "" && colorName != lastColorName {
+				fmt.Printf("   🎨 Detected: %s (R=%d, G=%d, B=%d)\n",
+					colorName, color.R, color.G, color.B)
+				lastColorName = colorName
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	fmt.Println("\n🎉 Color sensor test completed!")
+	fmt.Println("Press Enter to continue...")
+	bufio.NewReader(os.Stdin).ReadString('\n')
+}
+
+// identifyColor attempts to identify basic colors from RGB values
+func identifyColor(color buildhat.Color) string {
+	r, g, b := int(color.R), int(color.G), int(color.B)
+
+	// Very low intensity - black
+	if r < 30 && g < 30 && b < 30 {
+		return "Black"
+	}
+
+	// Very high intensity - white
+	if r > 200 && g > 200 && b > 200 {
+		return "White"
+	}
+
+	// Find dominant color
+	max := r
+	if g > max {
+		max = g
+	}
+	if b > max {
+		max = b
+	}
+
+	// Need some minimum intensity to identify colors
+	if max < 50 {
+		return ""
+	}
+
+	// Determine color based on dominant channel(s)
+	threshold := max * 60 / 100 // 60% threshold
+
+	isRed := r >= threshold
+	isGreen := g >= threshold
+	isBlue := b >= threshold
+
+	if isRed && !isGreen && !isBlue {
+		return "Red"
+	}
+	if !isRed && isGreen && !isBlue {
+		return "Green"
+	}
+	if !isRed && !isGreen && isBlue {
+		return "Blue"
+	}
+	if isRed && isGreen && !isBlue {
+		return "Yellow"
+	}
+	if !isRed && isGreen && isBlue {
+		return "Cyan"
+	}
+	if isRed && !isGreen && isBlue {
+		return "Magenta"
+	}
+
+	return ""
+}
+
+// createBar creates a simple text bar chart
+func createBar(value, max int) string {
+	barLength := 20
+	filled := (value * barLength) / max
+	if filled > barLength {
+		filled = barLength
+	}
+
+	bar := "["
+	for i := 0; i < barLength; i++ {
+		if i < filled {
+			bar += "█"
+		} else {
+			bar += "░"
+		}
+	}
+	bar += "]"
+
+	return bar
 }

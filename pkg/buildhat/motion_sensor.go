@@ -5,11 +5,10 @@ import (
 )
 
 // MotionSensor creates a motion sensor interface for the specified port
-func (b *Brick) MotionSensor(port string) *MotionSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) MotionSensor(port BuildHatPort) *MotionSensor {
 	return &MotionSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 

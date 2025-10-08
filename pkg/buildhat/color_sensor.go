@@ -5,11 +5,10 @@ import (
 )
 
 // ColorSensor creates a color sensor interface for the specified port
-func (b *Brick) ColorSensor(port string) *ColorSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) ColorSensor(port BuildHatPort) *ColorSensor {
 	return &ColorSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 
@@ -20,21 +19,21 @@ type ColorSensor struct {
 }
 
 // GetColor gets the current color reading as RGBA
-func (s *ColorSensor) GetColor() (struct{ R, G, B, A uint8 }, error) {
+func (s *ColorSensor) GetColor() (Color, error) {
 	// Set to color RGB mode (mode 5 - RGBI)
 	cmd := fmt.Sprintf("port %d ; select 5", s.port)
 	if err := s.brick.writeCommand(cmd); err != nil {
-		return struct{ R, G, B, A uint8 }{}, err
+		return Color{}, err
 	}
 
 	// Wait for sensor data
 	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
-		return struct{ R, G, B, A uint8 }{}, err
+		return Color{}, err
 	}
 
 	if len(data) < 4 {
-		return struct{ R, G, B, A uint8 }{}, fmt.Errorf("insufficient color data received")
+		return Color{}, fmt.Errorf("insufficient color data received")
 	}
 
 	// Convert from raw values (0-1024) to 0-255
@@ -43,7 +42,7 @@ func (s *ColorSensor) GetColor() (struct{ R, G, B, A uint8 }, error) {
 	b, _ := data[2].(int)
 	i, _ := data[3].(int)
 
-	return struct{ R, G, B, A uint8 }{
+	return Color{
 		R: clamp8((r * 255) / 1024),
 		G: clamp8((g * 255) / 1024),
 		B: clamp8((b * 255) / 1024),

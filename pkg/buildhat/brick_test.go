@@ -1,13 +1,14 @@
 package buildhat
 
 import (
+	"io"
 	"log/slog"
 	"strings"
 	"testing"
 )
 
 func TestNewBrick(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -35,7 +36,7 @@ func TestNewBrick(t *testing.T) {
 	}
 
 	// Check that connections are initialized
-	for i := 0; i < 4; i++ {
+	for i := range NumPorts {
 		if brick.connections[i] == nil {
 			t.Errorf("Expected connection %d to be initialized", i)
 		}
@@ -66,8 +67,6 @@ func TestBrick_Initialize(t *testing.T) {
 	t.Skip("Skipping slow test - Initialize has 5.5s of hardcoded sleeps for real hardware timing")
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
-
-	brick.SetupMockScanner()
 
 	// Queue responses for initialization in the format expected by parseLine
 	mockPort := brick.GetMockPort()
@@ -125,8 +124,6 @@ func TestBrick_GetHardwareVersion(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
-
 	// Queue version response in the format expected by parseLine
 	mockPort := brick.GetMockPort()
 	mockPort.QueueReadData("Firmware version: 1737564117 2025-01-22T16:41:57+00:00\r\n")
@@ -154,8 +151,6 @@ func TestBrick_GetHardwareVersion(t *testing.T) {
 func TestBrick_GetVoltage(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
-
-	brick.SetupMockScanner()
 
 	// Queue voltage response
 	mockPort := brick.GetMockPort()
@@ -209,12 +204,12 @@ func TestBrick_GetDeviceInfo(t *testing.T) {
 
 	devices := brick.GetDeviceInfo()
 
-	if len(devices) != 4 {
-		t.Errorf("Expected 4 devices, got %d", len(devices))
+	if len(devices) != NumPorts {
+		t.Errorf("Expected %d devices, got %d", NumPorts, len(devices))
 	}
 
 	// Check that all ports are present
-	expectedPorts := []string{"A", "B", "C", "D"}
+	expectedPorts := []BuildHatPort{PortA, PortB, PortC, PortD}
 	for _, port := range expectedPorts {
 		if _, exists := devices[port]; !exists {
 			t.Errorf("Expected port %s to be present", port)
@@ -247,27 +242,27 @@ func TestBrick_GetDeviceInfo_WithConnectedDevices(t *testing.T) {
 	devices := brick.GetDeviceInfo()
 
 	// Check port A (motor)
-	portA := devices["A"]
+	portA := devices[PortA]
 	if !portA.Connected {
 		t.Error("Expected port A to be connected")
 	}
 	if portA.TypeID != 75 {
 		t.Errorf("Expected port A TypeID to be 75, got %d", portA.TypeID)
 	}
-	if portA.DeviceType != "Motor" {
-		t.Errorf("Expected port A DeviceType to be Motor, got %s", portA.DeviceType)
+	if portA.Category != DeviceCategoryMotor {
+		t.Errorf("Expected port A Category to be Motor, got %s", portA.Category)
 	}
 
 	// Check port B (sensor)
-	portB := devices["B"]
+	portB := devices[PortB]
 	if !portB.Connected {
 		t.Error("Expected port B to be connected")
 	}
 	if portB.TypeID != 61 {
 		t.Errorf("Expected port B TypeID to be 61, got %d", portB.TypeID)
 	}
-	if portB.DeviceType != "Sensor" {
-		t.Errorf("Expected port B DeviceType to be Sensor, got %s", portB.DeviceType)
+	if portB.Category != DeviceCategorySensor {
+		t.Errorf("Expected port B Category to be Sensor, got %s", portB.Category)
 	}
 }
 
@@ -288,8 +283,6 @@ func TestBrick_GetEmbeddedFirmwareVersion(t *testing.T) {
 func TestBrick_CheckFirmwareVersion(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
-
-	brick.SetupMockScanner()
 
 	// Queue version response in the format expected by parseLine
 	mockPort := brick.GetMockPort()

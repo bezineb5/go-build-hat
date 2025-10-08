@@ -92,7 +92,7 @@ func getDeviceName(typeID int) string {
 	return getDeviceSpec(typeID).Name
 }
 
-// getDeviceType returns the device type for a type ID
-func getDeviceType(typeID int) string {
-	return getDeviceSpec(typeID).Category.String()
+// getDeviceCategory returns the device category for a type ID
+func getDeviceCategory(typeID int) DeviceCategory {
+	return getDeviceSpec(typeID).Category
 }

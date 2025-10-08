@@ -5,11 +5,10 @@ import (
 )
 
 // DistanceSensor creates a distance sensor interface for the specified port
-func (b *Brick) DistanceSensor(port string) *DistanceSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) DistanceSensor(port BuildHatPort) *DistanceSensor {
 	return &DistanceSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 

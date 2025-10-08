@@ -50,8 +50,6 @@ func TestFirmwareManager_BootloaderDetection(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	brick.SetupMockScanner()
-
 	// Queue bootloader version response
 	mockPort := brick.GetMockPort()
 	mockPort.QueueReadData("Firmware version: BuildHAT bootloader version 1.0\r\n")
@@ -77,8 +75,6 @@ func TestFirmwareManager_BootloaderDetection(t *testing.T) {
 func TestFirmwareManager_NormalFirmwareDetection(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
-
-	brick.SetupMockScanner()
 
 	// Queue normal firmware version response (without bootloader signature)
 	mockPort := brick.GetMockPort()

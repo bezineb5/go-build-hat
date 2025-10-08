@@ -4,12 +4,40 @@ import (
 	"fmt"
 )
 
+// TiltDirection represents the direction of tilt
+type TiltDirection int
+
+const (
+	TiltLevel TiltDirection = iota
+	TiltRight
+	TiltLeft
+	TiltForward
+	TiltBackward
+)
+
+// String returns the string representation of the tilt direction
+func (d TiltDirection) String() string {
+	switch d {
+	case TiltRight:
+		return "right"
+	case TiltLeft:
+		return "left"
+	case TiltForward:
+		return "forward"
+	case TiltBackward:
+		return "backward"
+	case TiltLevel:
+		return "level"
+	default:
+		return "unknown"
+	}
+}
+
 // TiltSensor creates a tilt sensor interface for the specified port
-func (b *Brick) TiltSensor(port string) *TiltSensor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) TiltSensor(port BuildHatPort) *TiltSensor {
 	return &TiltSensor{
 		brick: b,
-		port:  portNum,
+		port:  port.Int(),
 	}
 }
 
@@ -52,25 +80,25 @@ func (s *TiltSensor) GetTilt() (struct{ X, Y, Z int }, error) {
 	return struct{ X, Y, Z int }{X: x, Y: y, Z: z}, nil
 }
 
-// GetDirection returns the tilt direction as a string
-func (s *TiltSensor) GetDirection() (string, error) {
+// GetDirection returns the tilt direction as a TiltDirection enum
+func (s *TiltSensor) GetDirection() (TiltDirection, error) {
 	tilt, err := s.GetTilt()
 	if err != nil {
-		return "", err
+		return TiltLevel, err
 	}
 
 	// Simple direction mapping based on tilt values
 	// This is a simplified version - actual implementation may vary
 	switch {
 	case tilt.X > 45:
-		return "right", nil
+		return TiltRight, nil
 	case tilt.X < -45:
-		return "left", nil
+		return TiltLeft, nil
 	case tilt.Y > 45:
-		return "forward", nil
+		return TiltForward, nil
 	case tilt.Y < -45:
-		return "backward", nil
+		return TiltBackward, nil
 	default:
-		return "level", nil
+		return TiltLevel, nil
 	}
 }

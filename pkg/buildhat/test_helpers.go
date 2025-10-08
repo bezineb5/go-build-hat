@@ -1,14 +1,14 @@
 package buildhat
 
 import (
-	"bufio"
+	"io"
 	"log/slog"
 	"testing"
 )
 
 // TestBrick creates a Brick instance with a mock serial port for testing
 func TestBrick(_ *testing.T) *Brick {
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError, // Only show errors in tests
 	}))
 
@@ -24,12 +24,6 @@ func TestBrick(_ *testing.T) *Brick {
 // GetMockPort returns the mock serial port from a test brick
 func (b *Brick) GetMockPort() *MockSerialPort {
 	return b.input.(*MockSerialPort)
-}
-
-// SetupMockScanner sets up a scanner for the mock port
-func (b *Brick) SetupMockScanner() {
-	mockPort := b.GetMockPort()
-	b.scanner = bufio.NewScanner(mockPort)
 }
 
 // CleanupTestBrick cleans up a test brick

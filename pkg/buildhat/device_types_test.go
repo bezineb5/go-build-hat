@@ -168,28 +168,28 @@ func TestGetDeviceName(t *testing.T) {
 	}
 }
 
-func TestGetDeviceType(t *testing.T) {
+func TestGetDeviceCategory(t *testing.T) {
 	tests := []struct {
-		id         int
-		deviceType string
+		id       int
+		category DeviceCategory
 	}{
-		{-1, "Disconnected"},
-		{1, "PassiveMotor"},
-		{2, "PassiveMotor"},
-		{8, "Light"},
-		{34, "Sensor"},
-		{35, "Sensor"},
-		{37, "Sensor"},
-		{38, "Motor"},
-		{46, "Motor"},
-		{61, "Sensor"},
-		{999, "Unknown"},
+		{-1, DeviceCategoryDisconnected},
+		{1, DeviceCategoryPassiveMotor},
+		{2, DeviceCategoryPassiveMotor},
+		{8, DeviceCategoryLight},
+		{34, DeviceCategorySensor},
+		{35, DeviceCategorySensor},
+		{37, DeviceCategorySensor},
+		{38, DeviceCategoryMotor},
+		{46, DeviceCategoryMotor},
+		{61, DeviceCategorySensor},
+		{999, DeviceCategoryUnknown},
 	}
 
 	for _, tt := range tests {
-		result := getDeviceType(tt.id)
-		if result != tt.deviceType {
-			t.Errorf("getDeviceType(%d) = %q, want %q", tt.id, result, tt.deviceType)
+		result := getDeviceCategory(tt.id)
+		if result != tt.category {
+			t.Errorf("getDeviceCategory(%d) = %v, want %v", tt.id, result, tt.category)
 		}
 	}
 }
@@ -266,19 +266,19 @@ func TestDeviceSpec_KnownSensorIDs(t *testing.T) {
 }
 
 func TestDeviceSpec_Consistency(t *testing.T) {
-	// Test that getDeviceName and getDeviceType are consistent with getDeviceSpec
+	// Test that getDeviceName and getDeviceCategory are consistent with getDeviceSpec
 	testIDs := []int{-1, 1, 8, 34, 38, 61, 999}
 
 	for _, id := range testIDs {
 		spec := getDeviceSpec(id)
 		name := getDeviceName(id)
-		deviceType := getDeviceType(id)
+		category := getDeviceCategory(id)
 
 		if name != spec.Name {
 			t.Errorf("ID %d: getDeviceName() = %q, but spec.Name = %q", id, name, spec.Name)
 		}
-		if deviceType != spec.Category.String() {
-			t.Errorf("ID %d: getDeviceType() = %q, but spec.Category.String() = %q", id, deviceType, spec.Category.String())
+		if category != spec.Category {
+			t.Errorf("ID %d: getDeviceCategory() = %v, but spec.Category = %v", id, category, spec.Category)
 		}
 	}
 }

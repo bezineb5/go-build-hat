@@ -25,11 +25,10 @@ const (
 )
 
 // Motor creates a motor interface for the specified port
-func (b *Brick) Motor(port string) *Motor {
-	portNum := int(port[0] - 'A')
+func (b *Brick) Motor(port BuildHatPort) *Motor {
 	motor := &Motor{
 		brick:        b,
-		port:         portNum,
+		port:         port.Int(),
 		defaultSpeed: 20,
 		currentSpeed: 0,
 		runMode:      MotorRunModeNone,
@@ -107,24 +106,26 @@ func (m *Motor) RunForDegrees(degrees, speed int) error {
 	processedSpeed := float64(actualSpeed) * 0.05 // Collapse speed range to 0-5
 
 	// Calculate duration
-	duration := 0.0
+	var duration time.Duration
 	if processedSpeed != 0 {
-		duration = (newPos - currentPos) / processedSpeed
-		if duration < 0 {
-			duration = -duration
+		durationSecs := (newPos - currentPos) / processedSpeed
+		if durationSecs < 0 {
+			durationSecs = -durationSecs
 		}
+		duration = time.Duration(durationSecs * float64(time.Second))
 	}
 
 	// Send ramp command
+	durationSecs := duration.Seconds()
 	cmd := fmt.Sprintf("port %d ; select 0 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
-		m.port, m.port, currentPos, newPos, duration)
+		m.port, m.port, currentPos, newPos, durationSecs)
 	if err := m.brick.writeCommand(cmd); err != nil {
 		return err
 	}
 
 	// Wait for completion (simplified - in real implementation would use futures)
 	if duration > 0 {
-		time.Sleep(time.Duration(duration * float64(time.Second)))
+		time.Sleep(duration)
 	}
 
 	// Coast to stop if release is enabled
@@ -137,8 +138,8 @@ func (m *Motor) RunForDegrees(degrees, speed int) error {
 	return nil
 }
 
-// RunForSeconds runs the motor for the specified number of seconds
-func (m *Motor) RunForSeconds(seconds float64, speed int) error {
+// RunForDuration runs the motor for the specified duration
+func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 	if speed == 0 {
 		speed = m.defaultSpeed
 	}
@@ -157,6 +158,7 @@ func (m *Motor) RunForSeconds(seconds float64, speed int) error {
 		pidCmd = "pid_diff %d 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01"
 	}
 
+	seconds := duration.Seconds()
 	cmd := fmt.Sprintf("port %d ; select 0 ; %s ; set pulse %.6f 0.0 %.6f 0",
 		m.port, fmt.Sprintf(pidCmd, m.port), processedSpeed, seconds)
 	if err := m.brick.writeCommand(cmd); err != nil {
@@ -164,7 +166,7 @@ func (m *Motor) RunForSeconds(seconds float64, speed int) error {
 	}
 
 	// Wait for the specified time
-	time.Sleep(time.Duration(seconds * float64(time.Second)))
+	time.Sleep(duration)
 
 	// Coast to stop if release is enabled
 	if m.release {
@@ -275,30 +277,31 @@ func (m *Motor) selectPathByDirection(pos, path1, path2 int, direction MotorDire
 }
 
 // calculateMovementDuration calculates how long the movement will take
-func (m *Motor) calculateMovementDuration(currentPos, newPos float64, speed int) float64 {
+func (m *Motor) calculateMovementDuration(currentPos, newPos float64, speed int) time.Duration {
 	processedSpeed := float64(speed) * 0.05
 	if processedSpeed == 0 {
 		return 0
 	}
 
-	duration := (newPos - currentPos) / processedSpeed
-	if duration < 0 {
-		return -duration
+	durationSecs := (newPos - currentPos) / processedSpeed
+	if durationSecs < 0 {
+		durationSecs = -durationSecs
 	}
-	return duration
+	return time.Duration(durationSecs * float64(time.Second))
 }
 
 // executeRampMovement sends the ramp command to the motor
-func (m *Motor) executeRampMovement(currentPos, newPos, duration float64) error {
+func (m *Motor) executeRampMovement(currentPos, newPos float64, duration time.Duration) error {
+	durationSecs := duration.Seconds()
 	cmd := fmt.Sprintf("port %d ; select 0 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
-		m.port, m.port, currentPos/360.0, newPos, duration)
+		m.port, m.port, currentPos/360.0, newPos, durationSecs)
 	return m.brick.writeCommand(cmd)
 }
 
 // waitForMovementCompletion waits for movement to complete and optionally coasts
-func (m *Motor) waitForMovementCompletion(duration float64) {
+func (m *Motor) waitForMovementCompletion(duration time.Duration) {
 	if duration > 0 {
-		time.Sleep(time.Duration(duration * float64(time.Second)))
+		time.Sleep(duration)
 	}
 
 	if m.release {
