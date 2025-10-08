@@ -5,7 +5,7 @@ import (
 )
 
 // Light creates a light interface for the specified port
-func (b *Brick) Light(port BuildHatPort) *Light {
+func (b *Brick) Light(port Port) *Light {
 	return &Light{
 		brick: b,
 		port:  port.Int(),

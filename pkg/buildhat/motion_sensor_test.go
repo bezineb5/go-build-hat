@@ -41,7 +41,7 @@ func TestMotionSensor_GetMovementCount(t *testing.T) {
 }
 
 func TestMotionSensor_AllPorts(t *testing.T) {
-	ports := []BuildHatPort{PortA, PortB, PortC, PortD}
+	ports := []Port{PortA, PortB, PortC, PortD}
 
 	for _, port := range ports {
 		t.Run("Port"+port.String(), func(t *testing.T) {

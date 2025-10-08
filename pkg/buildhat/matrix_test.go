@@ -224,8 +224,12 @@ func TestMatrix_Clear(t *testing.T) {
 	matrix := brick.Matrix(PortB)
 
 	// Set some pixels first
-	_ = matrix.SetPixel(0, 0, MatrixColor(10), 10)
-	_ = matrix.SetPixel(1, 1, MatrixColor(10), 10)
+	if err := matrix.SetPixel(0, 0, MatrixColor(10), 10); err != nil {
+		t.Fatalf("SetPixel(0, 0) failed: %v", err)
+	}
+	if err := matrix.SetPixel(1, 1, MatrixColor(10), 10); err != nil {
+		t.Fatalf("SetPixel(1, 1) failed: %v", err)
+	}
 
 	// Clear the matrix
 	err := matrix.Clear()
@@ -249,7 +253,7 @@ func TestMatrix_AllPorts(t *testing.T) {
 	defer CleanupTestBrick(brick)
 
 	ports := []struct {
-		port     BuildHatPort
+		port     Port
 		expected int
 	}{
 		{PortA, 0},

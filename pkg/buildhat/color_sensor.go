@@ -5,7 +5,7 @@ import (
 )
 
 // ColorSensor creates a color sensor interface for the specified port
-func (b *Brick) ColorSensor(port BuildHatPort) *ColorSensor {
+func (b *Brick) ColorSensor(port Port) *ColorSensor {
 	return &ColorSensor{
 		brick: b,
 		port:  port.Int(),

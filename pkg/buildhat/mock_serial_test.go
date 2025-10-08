@@ -229,7 +229,9 @@ func TestMockSerialPort_Reset(t *testing.T) {
 	defer mockPort.Close()
 
 	// Write some data
-	_, _ = mockPort.Write([]byte("test"))
+	if _, err := mockPort.Write([]byte("test")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
 
 	// Queue some read data
 	mockPort.QueueReadData("test read")
@@ -302,8 +304,12 @@ func TestMockSerialPort_GetLastWrite(t *testing.T) {
 	}
 
 	// Write some data
-	_, _ = mockPort.Write([]byte("first"))
-	_, _ = mockPort.Write([]byte("second"))
+	if _, err := mockPort.Write([]byte("first")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
+	if _, err := mockPort.Write([]byte("second")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
 
 	// Get last write
 	lastWrite = mockPort.GetLastWrite()
@@ -327,9 +333,15 @@ func TestMockSerialPort_GetWriteCount(t *testing.T) {
 	}
 
 	// Write some data
-	_, _ = mockPort.Write([]byte("test1"))
-	_, _ = mockPort.Write([]byte("test2"))
-	_, _ = mockPort.Write([]byte("test3"))
+	if _, err := mockPort.Write([]byte("test1")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
+	if _, err := mockPort.Write([]byte("test2")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
+	if _, err := mockPort.Write([]byte("test3")); err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
 
 	// Check count
 	count = mockPort.GetWriteCount()

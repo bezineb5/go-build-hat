@@ -5,7 +5,7 @@ import (
 )
 
 // ButtonSensor creates a button sensor interface for the specified port
-func (b *Brick) ButtonSensor(port BuildHatPort) *ButtonSensor {
+func (b *Brick) ButtonSensor(port Port) *ButtonSensor {
 	return &ButtonSensor{
 		brick: b,
 		port:  port.Int(),

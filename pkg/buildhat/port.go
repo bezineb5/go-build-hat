@@ -2,21 +2,21 @@ package buildhat
 
 import "fmt"
 
-// BuildHatPort represents a physical port on the BuildHat (A, B, C, or D)
-type BuildHatPort int
+// Port represents a physical port on the BuildHat (A, B, C, or D)
+type Port int
 
 const (
 	// NumPorts is the number of ports on the BuildHat
 	NumPorts = 4
 
-	PortA BuildHatPort = 0
-	PortB BuildHatPort = 1
-	PortC BuildHatPort = 2
-	PortD BuildHatPort = 3
+	PortA Port = 0
+	PortB Port = 1
+	PortC Port = 2
+	PortD Port = 3
 )
 
 // String returns the string representation of the port ("A", "B", "C", or "D")
-func (p BuildHatPort) String() string {
+func (p Port) String() string {
 	switch p {
 	case PortA:
 		return "A"
@@ -32,17 +32,17 @@ func (p BuildHatPort) String() string {
 }
 
 // Int returns the integer value of the port (0-3)
-func (p BuildHatPort) Int() int {
+func (p Port) Int() int {
 	return int(p)
 }
 
 // IsValid returns true if the port is valid (A, B, C, or D)
-func (p BuildHatPort) IsValid() bool {
+func (p Port) IsValid() bool {
 	return p >= PortA && p <= PortD
 }
 
 // ParsePort converts a string ("A", "B", "C", or "D") to a BuildHatPort
-func ParsePort(s string) (BuildHatPort, error) {
+func ParsePort(s string) (Port, error) {
 	switch s {
 	case "A":
 		return PortA, nil
@@ -58,6 +58,6 @@ func ParsePort(s string) (BuildHatPort, error) {
 }
 
 // AllPorts returns a slice of all valid ports
-func AllPorts() []BuildHatPort {
-	return []BuildHatPort{PortA, PortB, PortC, PortD}
+func AllPorts() []Port {
+	return []Port{PortA, PortB, PortC, PortD}
 }

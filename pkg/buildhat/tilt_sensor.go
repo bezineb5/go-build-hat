@@ -34,7 +34,7 @@ func (d TiltDirection) String() string {
 }
 
 // TiltSensor creates a tilt sensor interface for the specified port
-func (b *Brick) TiltSensor(port BuildHatPort) *TiltSensor {
+func (b *Brick) TiltSensor(port Port) *TiltSensor {
 	return &TiltSensor{
 		brick: b,
 		port:  port.Int(),

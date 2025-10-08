@@ -4,15 +4,15 @@ import "testing"
 
 func TestBuildHatPort_String(t *testing.T) {
 	tests := []struct {
-		port     BuildHatPort
+		port     Port
 		expected string
 	}{
 		{PortA, "A"},
 		{PortB, "B"},
 		{PortC, "C"},
 		{PortD, "D"},
-		{BuildHatPort(-1), "Invalid(-1)"},
-		{BuildHatPort(99), "Invalid(99)"},
+		{Port(-1), "Invalid(-1)"},
+		{Port(99), "Invalid(99)"},
 	}
 
 	for _, tt := range tests {
@@ -25,7 +25,7 @@ func TestBuildHatPort_String(t *testing.T) {
 
 func TestBuildHatPort_Int(t *testing.T) {
 	tests := []struct {
-		port     BuildHatPort
+		port     Port
 		expected int
 	}{
 		{PortA, 0},
@@ -44,16 +44,16 @@ func TestBuildHatPort_Int(t *testing.T) {
 
 func TestBuildHatPort_IsValid(t *testing.T) {
 	tests := []struct {
-		port  BuildHatPort
+		port  Port
 		valid bool
 	}{
 		{PortA, true},
 		{PortB, true},
 		{PortC, true},
 		{PortD, true},
-		{BuildHatPort(-1), false},
-		{BuildHatPort(NumPorts), false},      // One past the end
-		{BuildHatPort(NumPorts + 10), false}, // Way out of range
+		{Port(-1), false},
+		{Port(NumPorts), false},      // One past the end
+		{Port(NumPorts + 10), false}, // Way out of range
 	}
 
 	for _, tt := range tests {
@@ -67,18 +67,18 @@ func TestBuildHatPort_IsValid(t *testing.T) {
 func TestParsePort(t *testing.T) {
 	tests := []struct {
 		input       string
-		expected    BuildHatPort
+		expected    Port
 		shouldError bool
 	}{
 		{"A", PortA, false},
 		{"B", PortB, false},
 		{"C", PortC, false},
 		{"D", PortD, false},
-		{"a", BuildHatPort(-1), true},
-		{"E", BuildHatPort(-1), true},
-		{"", BuildHatPort(-1), true},
-		{"AB", BuildHatPort(-1), true},
-		{"1", BuildHatPort(-1), true},
+		{"a", Port(-1), true},
+		{"E", Port(-1), true},
+		{"", Port(-1), true},
+		{"AB", Port(-1), true},
+		{"1", Port(-1), true},
 	}
 
 	for _, tt := range tests {
@@ -105,7 +105,7 @@ func TestAllPorts(t *testing.T) {
 		t.Errorf("AllPorts() returned %d ports, want %d", len(ports), NumPorts)
 	}
 
-	expected := []BuildHatPort{PortA, PortB, PortC, PortD}
+	expected := []Port{PortA, PortB, PortC, PortD}
 	for i, port := range ports {
 		if port != expected[i] {
 			t.Errorf("AllPorts()[%d] = %v, want %v", i, port, expected[i])

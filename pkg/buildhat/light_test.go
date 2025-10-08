@@ -126,7 +126,7 @@ func TestLight_AllPorts(t *testing.T) {
 	defer CleanupTestBrick(brick)
 
 	ports := []struct {
-		port     BuildHatPort
+		port     Port
 		expected int
 	}{
 		{PortA, 0},

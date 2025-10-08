@@ -5,7 +5,7 @@ import (
 )
 
 // ColorDistanceSensor creates a color distance sensor interface for the specified port
-func (b *Brick) ColorDistanceSensor(port BuildHatPort) *ColorDistanceSensor {
+func (b *Brick) ColorDistanceSensor(port Port) *ColorDistanceSensor {
 	return &ColorDistanceSensor{
 		brick: b,
 		port:  port.Int(),

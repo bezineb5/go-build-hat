@@ -25,7 +25,7 @@ const (
 )
 
 // Motor creates a motor interface for the specified port
-func (b *Brick) Motor(port BuildHatPort) *Motor {
+func (b *Brick) Motor(port Port) *Motor {
 	motor := &Motor{
 		brick:        b,
 		port:         port.Int(),
@@ -37,6 +37,11 @@ func (b *Brick) Motor(port BuildHatPort) *Motor {
 	}
 
 	// Initialize motor with default settings
+	// Set combi mode: mode 1 (speed), mode 2 (position), mode 3 (absolute position)
+	// Format: "port <n> ; combi 0 1 0 2 0 3 0 ; select 0 ; selrate 10"
+	initCmd := fmt.Sprintf("port %d ; combi 0 1 0 2 0 3 0 ; select 0 ; selrate 10", port.Int())
+	_ = b.writeCommand(initCmd)
+
 	_ = motor.SetPowerLimit(0.7)
 	_ = motor.SetPWMParams(0.65, 0.01)
 
@@ -66,6 +71,14 @@ func (m *Motor) SetDefaultSpeed(speed int) error {
 // SetSpeedUnitRPM sets whether to use RPM for speed units or not
 func (m *Motor) SetSpeedUnitRPM(rpm bool) {
 	m.rpm = rpm
+}
+
+// processSpeed converts speed value based on RPM setting
+func (m *Motor) processSpeed(speed int) float64 {
+	if m.rpm {
+		return float64(speed) / 60.0
+	}
+	return float64(speed)
 }
 
 // RunForRotations runs the motor for N rotations
@@ -106,26 +119,40 @@ func (m *Motor) RunForDegrees(degrees, speed int) error {
 	processedSpeed := float64(actualSpeed) * 0.05 // Collapse speed range to 0-5
 
 	// Calculate duration
-	var duration time.Duration
+	var durationSecs float64
 	if processedSpeed != 0 {
-		durationSecs := (newPos - currentPos) / processedSpeed
+		durationSecs = (newPos - currentPos) / processedSpeed
 		if durationSecs < 0 {
 			durationSecs = -durationSecs
 		}
-		duration = time.Duration(durationSecs * float64(time.Second))
 	}
 
-	// Send ramp command
-	durationSecs := duration.Seconds()
-	cmd := fmt.Sprintf("port %d ; select 0 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
+	// Create a future channel for completion notification
+	future := make(chan bool, 1)
+	m.brick.mu.Lock()
+	m.brick.rampFutures[m.port] = append(m.brick.rampFutures[m.port], future)
+	m.brick.mu.Unlock()
+
+	// Send ramp command (selrate 10 sets the sensor data interval)
+	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
 		m.port, m.port, currentPos, newPos, durationSecs)
 	if err := m.brick.writeCommand(cmd); err != nil {
+		// Remove the future since command failed
+		m.brick.mu.Lock()
+		if len(m.brick.rampFutures[m.port]) > 0 {
+			m.brick.rampFutures[m.port] = m.brick.rampFutures[m.port][:len(m.brick.rampFutures[m.port])-1]
+		}
+		m.brick.mu.Unlock()
 		return err
 	}
 
-	// Wait for completion (simplified - in real implementation would use futures)
-	if duration > 0 {
-		time.Sleep(duration)
+	// Wait for ramp completion with timeout
+	timeout := time.Duration((durationSecs + 2.0) * float64(time.Second)) // Add 2 second buffer
+	select {
+	case <-future:
+		// Ramp completed successfully
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for ramp completion")
 	}
 
 	// Coast to stop if release is enabled
@@ -149,8 +176,8 @@ func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 
 	m.runMode = MotorRunModeSeconds
 
-	// Process speed
-	processedSpeed := float64(speed) * 0.05 // Collapse to -5 to 5 range
+	// Process speed (sent as-is, not multiplied by 0.05)
+	processedSpeed := m.processSpeed(speed)
 
 	// Set up PID for speed control
 	pidCmd := "pid %d 0 0 s1 1 0 0.003 0.01 0 100 0.01"
@@ -158,15 +185,33 @@ func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 		pidCmd = "pid_diff %d 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01"
 	}
 
+	// Create a future channel for completion notification
+	future := make(chan bool, 1)
+	m.brick.mu.Lock()
+	m.brick.pulseFutures[m.port] = append(m.brick.pulseFutures[m.port], future)
+	m.brick.mu.Unlock()
+
 	seconds := duration.Seconds()
-	cmd := fmt.Sprintf("port %d ; select 0 ; %s ; set pulse %.6f 0.0 %.6f 0",
+	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; %s ; set pulse %.6f 0.0 %.6f 0",
 		m.port, fmt.Sprintf(pidCmd, m.port), processedSpeed, seconds)
 	if err := m.brick.writeCommand(cmd); err != nil {
+		// Remove the future since command failed
+		m.brick.mu.Lock()
+		if len(m.brick.pulseFutures[m.port]) > 0 {
+			m.brick.pulseFutures[m.port] = m.brick.pulseFutures[m.port][:len(m.brick.pulseFutures[m.port])-1]
+		}
+		m.brick.mu.Unlock()
 		return err
 	}
 
-	// Wait for the specified time
-	time.Sleep(duration)
+	// Wait for pulse completion with timeout
+	timeout := duration + 2*time.Second // Add 2 second buffer
+	select {
+	case <-future:
+		// Pulse completed successfully
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for pulse completion")
+	}
 
 	// Coast to stop if release is enabled
 	if m.release {
@@ -191,13 +236,17 @@ func (m *Motor) RunToPosition(degrees, speed int, direction MotorDirection) erro
 	}
 
 	newPos := m.calculateTargetPosition(pos, apos, degrees, direction)
-	duration := m.calculateMovementDuration(float64(pos), newPos, speed)
+	currentPosRotations := float64(pos) / 360.0
+	duration := m.calculateMovementDuration(currentPosRotations, newPos, speed)
 
-	if err := m.executeRampMovement(float64(pos), newPos, duration); err != nil {
+	if err := m.executeRampMovement(currentPosRotations, newPos, duration); err != nil {
 		return err
 	}
 
-	m.waitForMovementCompletion(duration)
+	if err := m.waitForMovementCompletion(); err != nil {
+		return err
+	}
+
 	m.runMode = MotorRunModeNone
 	return nil
 }
@@ -292,22 +341,48 @@ func (m *Motor) calculateMovementDuration(currentPos, newPos float64, speed int)
 
 // executeRampMovement sends the ramp command to the motor
 func (m *Motor) executeRampMovement(currentPos, newPos float64, duration time.Duration) error {
+	// Create a future channel for completion notification
+	future := make(chan bool, 1)
+	m.brick.mu.Lock()
+	m.brick.rampFutures[m.port] = append(m.brick.rampFutures[m.port], future)
+	m.brick.mu.Unlock()
+
 	durationSecs := duration.Seconds()
-	cmd := fmt.Sprintf("port %d ; select 0 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
-		m.port, m.port, currentPos/360.0, newPos, durationSecs)
-	return m.brick.writeCommand(cmd)
+	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
+		m.port, m.port, currentPos, newPos, durationSecs)
+
+	if err := m.brick.writeCommand(cmd); err != nil {
+		// Remove the future since command failed
+		m.brick.mu.Lock()
+		if len(m.brick.rampFutures[m.port]) > 0 {
+			m.brick.rampFutures[m.port] = m.brick.rampFutures[m.port][:len(m.brick.rampFutures[m.port])-1]
+		}
+		m.brick.mu.Unlock()
+		return err
+	}
+
+	// Wait for ramp completion with timeout
+	timeout := duration + 2*time.Second // Add 2 second buffer
+	select {
+	case <-future:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for ramp completion")
+	}
 }
 
-// waitForMovementCompletion waits for movement to complete and optionally coasts
-func (m *Motor) waitForMovementCompletion(duration time.Duration) {
-	if duration > 0 {
-		time.Sleep(duration)
-	}
-
+// waitForMovementCompletion handles post-movement coast if release is enabled
+func (m *Motor) waitForMovementCompletion() error {
+	// The executeRampMovement function now handles waiting for completion
+	// This function just handles the post-movement coast
 	if m.release {
 		time.Sleep(200 * time.Millisecond)
-		_ = m.Coast()
+		if err := m.Coast(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Start starts the motor at the specified speed
@@ -329,8 +404,8 @@ func (m *Motor) Start(speed int) error {
 		return fmt.Errorf("motor is busy in another mode")
 	}
 
-	// Process speed
-	processedSpeed := float64(speed) * 0.05
+	// Process speed (for Start command, speed is NOT multiplied - sent as-is)
+	processedSpeed := m.processSpeed(speed)
 
 	// Set up PID
 	pidCmd := "pid %d 0 0 s1 1 0 0.003 0.01 0 100 0.01"
@@ -338,7 +413,7 @@ func (m *Motor) Start(speed int) error {
 		pidCmd = "pid_diff %d 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01"
 	}
 
-	cmd := fmt.Sprintf("port %d ; select 0 ; %s ; set %.6f",
+	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; %s ; set %.6f",
 		m.port, fmt.Sprintf(pidCmd, m.port), processedSpeed)
 
 	if err := m.brick.writeCommand(cmd); err != nil {
@@ -455,14 +530,10 @@ func (m *Motor) SetRelease(release bool) {
 }
 
 // getData gets the current motor data (speed, position, absolute position)
+// Note: Unlike sending a command, this just waits for the next data packet
+// from the motor. The motor continuously sends data due to combi mode setup.
 func (m *Motor) getData() ([]interface{}, error) {
-	// Set motor to combi mode to read data
-	cmd := fmt.Sprintf("port %d ; select 0", m.port)
-	if err := m.brick.writeCommand(cmd); err != nil {
-		return nil, err
-	}
-
-	// Wait for sensor data
+	// Wait for sensor data (motor is already sending data continuously)
 	data, err := m.brick.getSensorData(m.port)
 	if err != nil {
 		return nil, err

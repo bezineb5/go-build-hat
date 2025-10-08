@@ -209,7 +209,7 @@ func TestBrick_GetDeviceInfo(t *testing.T) {
 	}
 
 	// Check that all ports are present
-	expectedPorts := []BuildHatPort{PortA, PortB, PortC, PortD}
+	expectedPorts := []Port{PortA, PortB, PortC, PortD}
 	for _, port := range expectedPorts {
 		if _, exists := devices[port]; !exists {
 			t.Errorf("Expected port %s to be present", port)

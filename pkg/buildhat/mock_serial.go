@@ -47,6 +47,10 @@ func (m *MockSerialPort) Write(data []byte) (int, error) {
 	m.writeHistory = append(m.writeHistory, string(data))
 
 	m.logger.Debug("MockSerialPort.Write", "data", string(data), "hex", fmt.Sprintf("%x", data))
+
+	// Auto-respond to motor commands with completion messages
+	go m.autoRespond(string(data))
+
 	return len(data), nil
 }
 
@@ -247,4 +251,63 @@ func (m *MockSerialPort) SimulateSensorResponse(port string, mode int, value str
 	// Queue the sensor data in the format expected by parseLine
 	// Format: P<port>M<mode> <data>
 	m.QueueReadData(fmt.Sprintf("P%dM%d %s\r\n", portNum, mode, value))
+}
+
+// autoRespond automatically responds to certain commands
+func (m *MockSerialPort) autoRespond(command string) {
+	// Small delay to simulate processing
+	time.Sleep(10 * time.Millisecond)
+
+	// Parse the command to extract port number and command type
+	// Look for "port <n>" and extract the port number
+	var portNum int
+	if _, err := fmt.Sscanf(command, "port %d", &portNum); err != nil {
+		return // Not a port command
+	}
+
+	// Check if it's a ramp or pulse command
+	if containsIgnoreCase(command, "set ramp") {
+		// For testing, use a small delay to make tests fast
+		// In real hardware, the HAT sends "ramp done" when movement completes
+		time.Sleep(100 * time.Millisecond)
+		m.QueueReadData(fmt.Sprintf("P%d: ramp done\r\n", portNum))
+		m.logger.Debug("AutoRespond: ramp done", "port", portNum)
+	} else if containsIgnoreCase(command, "set pulse") {
+		// For testing, use a small delay to make tests fast
+		// In real hardware, the HAT sends "pulse done" when time completes
+		time.Sleep(100 * time.Millisecond)
+		m.QueueReadData(fmt.Sprintf("P%d: pulse done\r\n", portNum))
+		m.logger.Debug("AutoRespond: pulse done", "port", portNum)
+	}
+}
+
+// containsIgnoreCase checks if s contains substr (case-insensitive)
+func containsIgnoreCase(s, substr string) bool {
+	return len(s) >= len(substr) &&
+		(s == substr || len(s) > len(substr) && findSubstring(s, substr))
+}
+
+// findSubstring is a helper to find substring case-insensitively
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		match := true
+		for j := 0; j < len(substr); j++ {
+			if toLower(s[i+j]) != toLower(substr[j]) {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+// toLower converts a byte to lowercase
+func toLower(b byte) byte {
+	if b >= 'A' && b <= 'Z' {
+		return b + ('a' - 'A')
+	}
+	return b
 }

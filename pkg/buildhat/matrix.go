@@ -52,7 +52,7 @@ func (c MatrixColor) String() string {
 }
 
 // Matrix creates a matrix interface for the specified port
-func (b *Brick) Matrix(port BuildHatPort) *Matrix {
+func (b *Brick) Matrix(port Port) *Matrix {
 	return &Matrix{
 		brick:  b,
 		port:   port.Int(),

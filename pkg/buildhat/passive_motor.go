@@ -5,7 +5,7 @@ import (
 )
 
 // PassiveMotor creates a passive motor interface for the specified port
-func (b *Brick) PassiveMotor(port BuildHatPort) *PassiveMotor {
+func (b *Brick) PassiveMotor(port Port) *PassiveMotor {
 	return &PassiveMotor{
 		brick: b,
 		port:  port.Int(),

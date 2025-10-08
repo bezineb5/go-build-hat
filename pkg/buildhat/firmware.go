@@ -87,10 +87,21 @@ func (fm *FirmwareManager) updateFirmware() error {
 	time.Sleep(100 * time.Millisecond)
 
 	// Send firmware data with STX/ETX markers
-	_, _ = fm.brick.writer.Write([]byte{0x02}) // STX
-	_, _ = fm.brick.writer.Write(firmware)
-	_, _ = fm.brick.writer.Write([]byte{0x03}) // ETX
-	_, _ = fm.brick.writer.Write([]byte("\r"))
+	// STX
+	if _, err := fm.brick.writer.Write([]byte{0x02}); err != nil {
+		return fmt.Errorf("failed to write STX: %w", err)
+	}
+	if _, err := fm.brick.writer.Write(firmware); err != nil {
+		return fmt.Errorf("failed to write firmware: %w", err)
+	}
+	// ETX
+	if _, err := fm.brick.writer.Write([]byte{0x03}); err != nil {
+		return fmt.Errorf("failed to write ETX: %w", err)
+	}
+	// CR
+	if _, err := fm.brick.writer.Write([]byte("\r")); err != nil {
+		return fmt.Errorf("failed to write CR: %w", err)
+	}
 	time.Sleep(10 * time.Millisecond)
 
 	// Step 3: Load the signature
@@ -103,10 +114,18 @@ func (fm *FirmwareManager) updateFirmware() error {
 	time.Sleep(100 * time.Millisecond)
 
 	// Send signature data with STX/ETX markers
-	_, _ = fm.brick.writer.Write([]byte{0x02}) // STX
-	_, _ = fm.brick.writer.Write(signature)
-	_, _ = fm.brick.writer.Write([]byte{0x03}) // ETX
-	_, _ = fm.brick.writer.Write([]byte("\r"))
+	if _, err := fm.brick.writer.Write([]byte{0x02}); err != nil {
+		return fmt.Errorf("failed to write STX: %w", err)
+	}
+	if _, err := fm.brick.writer.Write(signature); err != nil {
+		return fmt.Errorf("failed to write signature: %w", err)
+	}
+	if _, err := fm.brick.writer.Write([]byte{0x03}); err != nil {
+		return fmt.Errorf("failed to write ETX: %w", err)
+	}
+	if _, err := fm.brick.writer.Write([]byte("\r")); err != nil {
+		return fmt.Errorf("failed to write CR: %w", err)
+	}
 	time.Sleep(10 * time.Millisecond)
 
 	// Step 4: Reboot

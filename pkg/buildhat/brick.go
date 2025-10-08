@@ -28,6 +28,8 @@ type Brick struct {
 	vinFutures     []chan float64
 	versionFutures []chan string
 	sensorFutures  [NumPorts][]chan []any // Sensor data futures per port
+	rampFutures    [NumPorts][]chan bool  // Ramp completion futures per port
+	pulseFutures   [NumPorts][]chan bool  // Pulse completion futures per port
 
 	// Firmware management
 	firmwareManager *FirmwareManager
@@ -63,6 +65,8 @@ func NewBrick(reader io.Reader, writer io.Writer, logger *slog.Logger) *Brick {
 	// Initialize sensor futures for each port
 	for i := range NumPorts {
 		brick.sensorFutures[i] = make([]chan []any, 0)
+		brick.rampFutures[i] = make([]chan bool, 0)
+		brick.pulseFutures[i] = make([]chan bool, 0)
 	}
 
 	// Initialize firmware manager
@@ -245,6 +249,40 @@ func (b *Brick) tryParseSensorData(line string) bool {
 
 // handlePortMessage handles port connection/disconnection messages
 func (b *Brick) handlePortMessage(portID int, msg string) {
+	switch {
+	case strings.Contains(msg, "ramp done"):
+		// Handle ramp completion
+		b.mu.Lock()
+		if len(b.rampFutures[portID]) > 0 {
+			// Pop the first future and signal completion
+			future := b.rampFutures[portID][0]
+			b.rampFutures[portID] = b.rampFutures[portID][1:]
+			b.mu.Unlock()
+			future <- true
+			close(future)
+		} else {
+			b.mu.Unlock()
+			b.logger.Debug("Received ramp done with no pending future", "port", portID)
+		}
+		return
+
+	case strings.Contains(msg, "pulse done"):
+		// Handle pulse completion
+		b.mu.Lock()
+		if len(b.pulseFutures[portID]) > 0 {
+			// Pop the first future and signal completion
+			future := b.pulseFutures[portID][0]
+			b.pulseFutures[portID] = b.pulseFutures[portID][1:]
+			b.mu.Unlock()
+			future <- true
+			close(future)
+		} else {
+			b.mu.Unlock()
+			b.logger.Debug("Received pulse done with no pending future", "port", portID)
+		}
+		return
+	}
+
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -421,13 +459,13 @@ func (b *Brick) getSensorData(port int) ([]any, error) {
 }
 
 // GetDeviceInfo returns information about devices on all ports
-func (b *Brick) GetDeviceInfo() map[BuildHatPort]DeviceInfo {
+func (b *Brick) GetDeviceInfo() map[Port]DeviceInfo {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	devices := make(map[BuildHatPort]DeviceInfo)
+	devices := make(map[Port]DeviceInfo)
 	for i := range NumPorts {
-		port := BuildHatPort(i)
+		port := Port(i)
 		conn := b.connections[i]
 
 		devices[port] = DeviceInfo{
@@ -444,7 +482,7 @@ func (b *Brick) GetDeviceInfo() map[BuildHatPort]DeviceInfo {
 
 // DeviceInfo represents information about a device
 type DeviceInfo struct {
-	Port      BuildHatPort
+	Port      Port
 	TypeID    int
 	Connected bool
 	Name      string

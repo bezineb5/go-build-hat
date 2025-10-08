@@ -184,7 +184,7 @@ func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 
 	// Check if we have any motors connected
 	devices := brick.GetDeviceInfo()
-	var motorPort buildhat.BuildHatPort
+	var motorPort buildhat.Port
 	var motorFound bool
 
 	for port, info := range devices {
@@ -324,7 +324,7 @@ func testColorSensor(brick *buildhat.Brick, logger *slog.Logger) {
 
 	// Check if we have any color sensors connected
 	devices := brick.GetDeviceInfo()
-	var sensorPort buildhat.BuildHatPort
+	var sensorPort buildhat.Port
 	var sensorFound bool
 
 	for port, info := range devices {
