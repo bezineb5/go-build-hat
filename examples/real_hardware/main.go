@@ -9,78 +9,63 @@ import (
 	"time"
 
 	"github.com/bezineb5/go-build-hat/pkg/buildhat"
-	"github.com/bezineb5/go-build-hat/pkg/buildhat/models"
-	"github.com/bezineb5/go-build-hat/pkg/buildhat/motors"
+	"go.bug.st/serial"
 )
 
 func main() {
-	fmt.Println("🔧 BuildHat Go - Real Hardware Example")
-	fmt.Println("=====================================")
-
-	// Create a logger
+	// Set up logging
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 
-	// Detect BuildHat serial port
-	fmt.Println("🔍 Detecting BuildHat serial port...")
-	portPath, err := buildhat.DetectBuildHatPort(logger)
+	fmt.Println("🚀 BuildHat Real Hardware Test")
+	fmt.Println("==============================")
+
+	// Initialize BuildHat
+	port, err := serial.Open("/dev/serial0", &serial.Mode{
+		BaudRate: 115200,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+	})
 	if err != nil {
-		logger.Error("Failed to detect BuildHat port", "error", err)
-		fmt.Println("\n💡 Troubleshooting:")
-		fmt.Println("1. Make sure BuildHat is connected to Raspberry Pi")
-		fmt.Println("2. Enable serial port: sudo raspi-config")
-		fmt.Println("3. Check connections and power supply")
-		fmt.Println("4. Try running: ls -la /dev/serial*")
+		logger.Error("Failed to open serial port", "error", err)
+		return
+	}
+	defer port.Close()
+
+	brick := buildhat.NewBrick(port, port, logger)
+	defer brick.Close()
+
+	// Initialize the BuildHat
+	if err := brick.Initialize(); err != nil {
+		logger.Error("Failed to initialize BuildHat", "error", err)
 		return
 	}
 
-	fmt.Printf("✅ Found BuildHat on port: %s\n", portPath)
+	fmt.Println("✅ BuildHat initialized successfully!")
+	fmt.Println()
 
-	// Create real serial port
-	fmt.Println("🔌 Connecting to BuildHat...")
-	serialPort, err := buildhat.NewSerialPort(portPath)
-	if err != nil {
-		logger.Error("Failed to connect to BuildHat", "error", err)
-		return
-	}
-	defer serialPort.Close()
-
-	// Create brick with real serial port
-	fmt.Println("🔧 Initializing BuildHat...")
-	brick := buildhat.NewBrick(serialPort, serialPort, logger)
-
-	fmt.Println("✅ Connected to BuildHat successfully!")
-	fmt.Println("")
-
-	// Display BuildHat information
-	fmt.Println("📋 BuildHat Information:")
-	fmt.Printf("   Port: %s\n", portPath)
-	fmt.Printf("   Baud Rate: 115200\n")
-	fmt.Printf("   Status: Connected\n")
-	fmt.Println("")
-
-	// Interactive menu
+	// Main menu loop
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		displayMenu()
+		showMenu()
+		fmt.Print("Enter your choice: ")
 
-		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		choice := strings.TrimSpace(input)
 
 		switch choice {
 		case "1":
-			testConnection()
+			testConnection(brick)
 		case "2":
-			scanPorts(brick)
+			scanDevices(brick, logger)
 		case "3":
-			testSerialCommunication()
+			testVersion(brick, logger)
 		case "4":
-			readFirmwareVersion(brick)
+			testVoltage(brick, logger)
 		case "5":
-			readVoltage(brick)
-		case "6":
-			testMotorControl(brick)
+			testMotorControl(brick, logger)
 		case "q", "quit", "exit":
 			fmt.Println("👋 Goodbye!")
 			return
@@ -88,172 +73,243 @@ func main() {
 			fmt.Println("❌ Invalid choice. Please try again.")
 		}
 
-		fmt.Println("\nPress Enter to continue...")
-		bufio.NewReader(os.Stdin).ReadString('\n')
+		fmt.Println()
 	}
 }
 
-func displayMenu() {
-	fmt.Println("🎯 Select a test:")
-	fmt.Println("  1. Test connection")
-	fmt.Println("  2. Scan for connected devices")
-	fmt.Println("  3. Test serial communication")
-	fmt.Println("  4. Read firmware version")
-	fmt.Println("  5. Read input voltage")
-	fmt.Println("  6. Test motor control")
-	fmt.Println("  q. Quit")
-	fmt.Print("Choice: ")
+func showMenu() {
+	fmt.Println("📋 Available Tests:")
+	fmt.Println("1. Test Connection")
+	fmt.Println("2. Scan for Connected Devices")
+	fmt.Println("3. Read Firmware Version")
+	fmt.Println("4. Read Input Voltage")
+	fmt.Println("5. Test Motor Control")
+	fmt.Println("q. Quit")
+	fmt.Println()
 }
 
-func testConnection() {
-	fmt.Println("🔗 Testing BuildHat connection...")
+func testConnection(brick *buildhat.Brick) {
+	fmt.Println("🔌 Testing connection...")
 
-	// Try to read firmware version
-	fmt.Println("   Sending version command...")
-	// Note: This would need to be implemented in the brick
-	fmt.Println("   ✅ Connection test completed")
+	// Try to get device info
+	devices := brick.GetDeviceInfo()
+	fmt.Printf("✅ Connection successful! Found %d ports\n", len(devices))
+
+	for port, info := range devices {
+		status := "❌ Disconnected"
+		if info.Connected {
+			status = "✅ Connected"
+		}
+		fmt.Printf("   Port %s: %s (%s)\n", port, info.Name, status)
+	}
 }
 
-func scanPorts(brick *buildhat.Brick) {
+func scanDevices(brick *buildhat.Brick, logger *slog.Logger) {
 	fmt.Println("🔍 Scanning for connected devices...")
 
-	// Scan all 4 ports
-	for i := 0; i < 4; i++ {
-		port := models.SensorPort(i)
-		sensorType := brick.GetSensorType(port)
+	if err := brick.ScanDevices(); err != nil {
+		logger.Error("Failed to scan devices", "error", err)
+		return
+	}
 
-		fmt.Printf("   Port %d: ", i)
-		if sensorType == models.None {
-			fmt.Println("No device")
+	// Wait a bit for scanning to complete
+	time.Sleep(2 * time.Second)
+
+	devices := brick.GetDeviceInfo()
+	for port, info := range devices {
+		if info.Connected {
+			fmt.Printf("Port %s: %s (%s)\n", port, info.Name, info.DeviceType)
 		} else {
-			fmt.Printf("%s (%s)\n", sensorType.String(),
-				func() string {
-					if sensorType.IsMotor() {
-						return "Motor"
-					}
-					return "Sensor"
-				}())
+			fmt.Printf("Port %s: No device\n", port)
 		}
 	}
+
+	fmt.Println("Press Enter to continue...")
+	bufio.NewReader(os.Stdin).ReadString('\n')
 }
 
-func testSerialCommunication() {
-	fmt.Println("📡 Testing serial communication...")
-
-	// This would send actual commands to the BuildHat
-	fmt.Println("   Sending test commands...")
-	time.Sleep(1 * time.Second)
-	fmt.Println("   ✅ Serial communication test completed")
-}
-
-func readFirmwareVersion(brick *buildhat.Brick) {
+func testVersion(brick *buildhat.Brick, logger *slog.Logger) {
 	fmt.Println("📖 Reading firmware version...")
 
-	// Try to get embedded version
-	version, err := brick.GetEmbeddedVersion()
+	// Get embedded firmware version
+	embeddedVersion, err := brick.GetEmbeddedFirmwareVersion()
 	if err != nil {
-		fmt.Printf("   ❌ Failed to read embedded version: %v\n", err)
+		logger.Error("Failed to get embedded firmware version", "error", err)
+		fmt.Println("❌ Failed to get embedded firmware version")
 	} else {
-		fmt.Printf("   ✅ Embedded firmware version: %s\n", version)
+		fmt.Printf("📦 Embedded firmware version: %s\n", embeddedVersion)
 	}
 
-	// Try to read version from hardware
-	fmt.Println("   🔌 Reading version from hardware...")
-	hwVersion, err := brick.GetHardwareVersion()
+	// Get current hardware version
+	currentVersion, err := brick.GetHardwareVersion()
 	if err != nil {
-		fmt.Printf("   ❌ Failed to read hardware version: %v\n", err)
+		logger.Error("Failed to read hardware version", "error", err)
+		fmt.Println("❌ Failed to read hardware version")
+		return
+	}
+	fmt.Printf("🔧 Current firmware version: %s\n", currentVersion)
+
+	// Check if versions match
+	versionsMatch, err := brick.CheckFirmwareVersion()
+	if err != nil {
+		logger.Error("Failed to check firmware version", "error", err)
+		fmt.Println("❌ Failed to check firmware version")
+		return
+	}
+
+	if versionsMatch {
+		fmt.Println("✅ Firmware versions match - no update needed")
 	} else {
-		fmt.Printf("   ✅ Hardware firmware version: %s\n", hwVersion)
+		fmt.Println("⚠️  Firmware versions differ - update may be needed")
 	}
 }
 
-func readVoltage(brick *buildhat.Brick) {
+func testVoltage(brick *buildhat.Brick, logger *slog.Logger) {
 	fmt.Println("⚡ Reading input voltage...")
 
-	// Read actual voltage from BuildHat
-	fmt.Println("   Reading voltage from BuildHat...")
-	voltage, err := brick.ReadInputVoltage()
+	voltage, err := brick.GetVoltage()
 	if err != nil {
-		fmt.Printf("   ❌ Failed to read voltage: %v\n", err)
-	} else {
-		fmt.Printf("   ✅ Input voltage: %.1f V\n", voltage)
+		logger.Error("Failed to read voltage", "error", err)
+		return
 	}
+
+	fmt.Printf("✅ Input voltage: %.2f V\n", voltage)
 }
 
-func testMotorControl(brick *buildhat.Brick) {
+func testMotorControl(brick *buildhat.Brick, logger *slog.Logger) {
 	fmt.Println("🎮 Testing motor control...")
 
-	// Check if motor is connected on port 0
-	sensorType := brick.GetSensorType(models.PortA)
-	if !sensorType.IsMotor() {
-		fmt.Println("   ❌ No motor detected on port A")
+	// Check if we have any motors connected
+	devices := brick.GetDeviceInfo()
+	var motorPort string
+
+	for port, info := range devices {
+		if info.Connected && info.DeviceType == "Motor" {
+			motorPort = port
+			break
+		}
+	}
+
+	if motorPort == "" {
+		fmt.Println("❌ No motor found. Please connect a motor to any port.")
 		return
 	}
 
-	fmt.Printf("   ✅ Motor detected: %s\n", sensorType.String())
+	fmt.Printf("✅ Motor detected: %s on port %s\n", devices[motorPort].Name, motorPort)
 
-	// Get the motor from the brick
-	motor, err := buildhat.GetDevice[motors.Motor](brick, models.PortA)
-	if err != nil {
-		fmt.Println("   ❌ Could not get motor instance")
-		return
+	// Create motor instance
+	motor := brick.Motor(motorPort)
+
+	// Configure motor
+	fmt.Println("\n⚙️  Configuring motor...")
+	motor.SetDefaultSpeed(30)
+	motor.SetPowerLimit(0.8)
+	fmt.Println("✅ Motor configured (default speed: 30%, power limit: 80%)")
+
+	// Test 1: Read motor position and speed
+	fmt.Println("\n📊 Reading motor status...")
+	if position, err := motor.GetPosition(); err == nil {
+		fmt.Printf("   Position: %d degrees\n", position)
+	}
+	if speed, err := motor.GetSpeed(); err == nil {
+		fmt.Printf("   Speed: %d\n", speed)
+	}
+	if apos, err := motor.GetAbsolutePosition(); err == nil {
+		fmt.Printf("   Absolute Position: %d degrees\n", apos)
 	}
 
-	fmt.Println("   🔧 Testing motor control...")
-
-	// Test 1: Set speed
-	fmt.Println("   Setting speed to 50...")
-	if err := motor.SetSpeed(50); err != nil {
-		fmt.Printf("   ❌ Failed to set speed: %v\n", err)
-		return
+	// Test 2: Preset position to 0
+	fmt.Println("\n🔄 Resetting position to 0...")
+	if err := motor.PresetPosition(); err != nil {
+		logger.Error("Failed to preset position", "error", err)
+	} else {
+		fmt.Println("✅ Position reset")
 	}
-	fmt.Println("   ✅ Speed set successfully")
+	time.Sleep(500 * time.Millisecond)
 
-	// Test 2: Start motor
-	fmt.Println("   Starting motor...")
-	if err := motor.Start(); err != nil {
-		fmt.Printf("   ❌ Failed to start motor: %v\n", err)
-		return
-	}
-	fmt.Println("   ✅ Motor started")
-
-	// Test 3: Wait and read position
-	fmt.Println("   Waiting 2 seconds...")
-	time.Sleep(2 * time.Second)
-
-	// Test 4: Stop motor
-	fmt.Println("   Stopping motor...")
-	if err := motor.Stop(); err != nil {
-		fmt.Printf("   ❌ Failed to stop motor: %v\n", err)
-		return
-	}
-	fmt.Println("   ✅ Motor stopped")
-
-	// Test 5: Set speed to -50 (reverse)
-	fmt.Println("   Setting speed to -50 (reverse)...")
-	if err := motor.SetSpeed(-50); err != nil {
-		fmt.Printf("   ❌ Failed to set reverse speed: %v\n", err)
-		return
+	// Test 3: Run for 1 rotation
+	fmt.Println("\n🔄 Running motor for 1 rotation at 50% speed...")
+	if err := motor.RunForRotations(1.0, 50); err != nil {
+		logger.Error("Failed to run motor", "error", err)
+	} else {
+		fmt.Println("✅ Completed 1 rotation")
 	}
 
-	// Test 6: Start reverse
-	fmt.Println("   Starting motor in reverse...")
-	if err := motor.Start(); err != nil {
-		fmt.Printf("   ❌ Failed to start reverse: %v\n", err)
-		return
+	// Test 4: Run for 360 degrees
+	fmt.Println("\n🔄 Running motor for 360 degrees at 40% speed...")
+	if err := motor.RunForDegrees(360, 40); err != nil {
+		logger.Error("Failed to run motor", "error", err)
+	} else {
+		fmt.Println("✅ Completed 360 degrees")
 	}
-	fmt.Println("   ✅ Motor started in reverse")
 
-	// Test 7: Wait and stop
-	fmt.Println("   Waiting 2 seconds...")
-	time.Sleep(2 * time.Second)
-
-	fmt.Println("   Stopping motor...")
-	if err := motor.Stop(); err != nil {
-		fmt.Printf("   ❌ Failed to stop motor: %v\n", err)
-		return
+	// Test 5: Run for 2 seconds
+	fmt.Println("\n⏱️  Running motor for 2 seconds at 50% speed...")
+	if err := motor.RunForSeconds(2, 50); err != nil {
+		logger.Error("Failed to run motor", "error", err)
+	} else {
+		fmt.Println("✅ Completed 2 seconds")
 	}
-	fmt.Println("   ✅ Motor stopped")
 
-	fmt.Println("   🎉 Motor control test completed!")
+	// Test 6: Run for 2 seconds in reverse
+	fmt.Println("\n⏱️  Running motor for 2 seconds at -50% speed (reverse)...")
+	if err := motor.RunForSeconds(2, -50); err != nil {
+		logger.Error("Failed to run motor in reverse", "error", err)
+	} else {
+		fmt.Println("✅ Completed reverse run")
+	}
+
+	// Test 7: Start/Stop motor
+	fmt.Println("\n▶️  Starting motor in free-run mode at 30% speed...")
+	if err := motor.Start(30); err != nil {
+		logger.Error("Failed to start motor", "error", err)
+	} else {
+		fmt.Println("✅ Motor started")
+		time.Sleep(2 * time.Second)
+
+		fmt.Println("⏸️  Stopping motor...")
+		if err := motor.Stop(); err != nil {
+			logger.Error("Failed to stop motor", "error", err)
+		} else {
+			fmt.Println("✅ Motor stopped")
+		}
+	}
+
+	// Test 8: Direct PWM control
+	fmt.Println("\n⚡ Testing PWM control (0.5 = 50% power)...")
+	if err := motor.PWM(0.5); err != nil {
+		logger.Error("Failed to set PWM", "error", err)
+	} else {
+		fmt.Println("✅ PWM set to 50%")
+		time.Sleep(1 * time.Second)
+		motor.Coast()
+		fmt.Println("✅ Motor coasted")
+	}
+
+	// Test 9: Run to position (if supported)
+	fmt.Println("\n🎯 Running to position 90° (shortest path)...")
+	if err := motor.RunToPosition(90, 40, buildhat.DirectionShortest); err != nil {
+		logger.Warn("RunToPosition not available or failed", "error", err)
+	} else {
+		fmt.Println("✅ Reached position 90°")
+
+		// Return to 0
+		fmt.Println("🎯 Returning to position 0°...")
+		if err := motor.RunToPosition(0, 40, buildhat.DirectionShortest); err == nil {
+			fmt.Println("✅ Returned to position 0°")
+		}
+	}
+
+	// Final status
+	fmt.Println("\n📊 Final motor status:")
+	if position, err := motor.GetPosition(); err == nil {
+		fmt.Printf("   Position: %d degrees\n", position)
+	}
+	if speed, err := motor.GetSpeed(); err == nil {
+		fmt.Printf("   Speed: %d\n", speed)
+	}
+
+	fmt.Println("\n🎉 Motor control test completed!")
+	fmt.Println("Press Enter to continue...")
+	bufio.NewReader(os.Stdin).ReadString('\n')
 }

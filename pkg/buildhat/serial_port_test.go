@@ -1,42 +1,27 @@
 package buildhat
 
 import (
-	"log/slog"
-	"os"
+	"strings"
 	"testing"
 )
 
-func TestGetAvailablePorts(t *testing.T) {
-	ports, err := GetAvailablePorts()
-	if err != nil {
-		t.Logf("GetAvailablePorts failed (expected on systems without serial ports): %v", err)
-		return
+// TestNewSerialPort_ErrorHandling tests that NewSerialPort returns appropriate errors
+// for non-existent ports without trying to access real hardware
+func TestNewSerialPort_ErrorHandling(t *testing.T) {
+	// Test with a clearly non-existent port
+	_, err := NewSerialPort("/dev/nonexistent_serial_port_12345")
+	if err == nil {
+		t.Error("Expected error when opening nonexistent port")
 	}
 
-	t.Logf("Available ports: %v", ports)
-}
-
-func TestDetectBuildHatPort(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
-	port, err := DetectBuildHatPort(logger)
-	if err != nil {
-		t.Logf("DetectBuildHatPort failed (expected on systems without BuildHat): %v", err)
-		return
+	// Verify error message format
+	errStr := err.Error()
+	if !strings.Contains(errStr, "failed to open serial port") {
+		t.Errorf("Expected error message to contain 'failed to open serial port', got: %s", errStr)
 	}
-
-	t.Logf("Detected BuildHat port: %s", port)
 }
 
-func TestRealSerialPortCreation(t *testing.T) {
-	// Try to create a serial port (this will likely fail on most systems)
-	_, err := NewSerialPort("/dev/ttyAMA0")
-	if err != nil {
-		t.Logf("NewRealSerialPort failed (expected on systems without /dev/ttyAMA0): %v", err)
-		return
-	}
-
-	t.Log("RealSerialPort created successfully")
-}
+// Note: We intentionally do NOT test GetAvailablePorts or DetectBuildHatPort
+// because they would scan real hardware ports on the system.
+// These functions are designed to interact with real hardware and should only
+// be tested in integration tests with actual BuildHat hardware present.

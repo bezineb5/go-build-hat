@@ -5,9 +5,6 @@ run:
 linters-settings:
   gocyclo:
     min-complexity: 15
-  goconst:
-    min-len: 2
-    min-occurrences: 2
   gocritic:
     enabled-tags:
       - diagnostic

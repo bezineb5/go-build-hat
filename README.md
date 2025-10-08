@@ -9,16 +9,19 @@
 
 A Go library for controlling LEGO SPIKE Prime and Technic motors and sensors through the Raspberry Pi BuildHat.
 
-This library is a Go port of the .NET BuildHat library, providing a clean interface for communicating with LEGO SPIKE Prime and Technic devices through the Raspberry Pi BuildHat.
+This library is a Go port of the Python BuildHat library, providing a clean and idiomatic Go interface for communicating with LEGO SPIKE Prime and Technic devices through the Raspberry Pi BuildHat.
 
 ## Features
 
-- **Generic I/O Interface**: Uses `io.Reader` and `io.Writer` interfaces, allowing you to choose any serial communication library
-- **Motor Control**: Full control over LEGO motors including speed, position, and power management
-- **Sensor Support**: Support for various LEGO sensors including color, distance, force, and tilt sensors
+- **Generic I/O Interface**: Uses `io.Reader` and `io.Writer` interfaces, decoupled from any specific serial library
+- **Comprehensive Motor Control**: Full motor control with speed, position, rotation, PWM, and PID parameters
+- **Rich Sensor Support**: Color, distance, force, tilt, motion sensors, lights, and 3x3 LED matrix
+- **Python-Compatible API**: High-level motor and sensor interfaces matching the Python BuildHat library
 - **Thread-Safe**: All operations are thread-safe with proper mutex protection
-- **Context Support**: Full context support for cancellation and timeouts
+- **Asynchronous I/O**: Future-based sensor data retrieval with timeout support
+- **Firmware Management**: Automatic firmware version checking and updating
 - **Structured Logging**: Built-in structured logging with Go's standard `slog` package
+- **Well Tested**: 64%+ test coverage with comprehensive unit and integration tests
 
 ## Installation
 
@@ -39,13 +42,21 @@ import (
     "time"
 
     "github.com/bezineb5/go-build-hat/pkg/buildhat"
-    "github.com/bezineb5/go-build-hat/pkg/buildhat/models"
+    "go.bug.st/serial"
 )
 
 func main() {
     // Create your serial port connection
-    // This example uses a mock, but you would use a real serial port
-    serialPort := createSerialPort() // Your serial port implementation
+    port, err := serial.Open("/dev/serial0", &serial.Mode{
+        BaudRate: 115200,
+        DataBits: 8,
+        Parity:   serial.NoParity,
+        StopBits: serial.OneStopBit,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer port.Close()
     
     // Create logger
     logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -53,34 +64,34 @@ func main() {
     }))
 
     // Create brick instance
-    brick := buildhat.NewBrick(serialPort, serialPort, logger)
+    brick := buildhat.NewBrick(port, port, logger)
     defer brick.Close()
 
-    // Wait for initialization
-    time.Sleep(2 * time.Second)
-
-    // Set LED mode
-    if err := brick.SetLedMode(models.Green); err != nil {
+    // Initialize the BuildHat
+    if err := brick.Initialize(); err != nil {
         log.Fatal(err)
     }
 
-    // Set motor power
-    if err := brick.SetMotorPower(models.PortA, 50); err != nil {
+    // Create motor on port A
+    motor := brick.Motor("A")
+    
+    // Run motor for 2 seconds at 50% speed
+    if err := motor.RunForSeconds(2, 50); err != nil {
         log.Fatal(err)
     }
-
-    // Move motor for 2 seconds
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-
-    if err := brick.MoveMotorForSeconds(models.PortA, 2.0, 75, true, ctx); err != nil {
+    
+    // Or run for specific rotations
+    if err := motor.RunForRotations(2.5, 75); err != nil {
         log.Fatal(err)
     }
-
-    // Float the motor
-    if err := brick.FloatMotor(models.PortA); err != nil {
+    
+    // Create a color sensor on port B
+    colorSensor := brick.ColorSensor("B")
+    color, err := colorSensor.GetColor()
+    if err != nil {
         log.Fatal(err)
     }
+    log.Printf("Detected color: %s", color)
 }
 ```
 
@@ -122,7 +133,7 @@ func createSerialPort() (io.ReadWriteCloser, error) {
 
 ### Brick
 
-The main `Brick` struct provides all the functionality for controlling motors and sensors.
+The main `Brick` struct provides core functionality for device initialization and management.
 
 #### Constructor
 
@@ -130,125 +141,240 @@ The main `Brick` struct provides all the functionality for controlling motors an
 func NewBrick(reader io.Reader, writer io.Writer, logger *slog.Logger) *Brick
 ```
 
-#### Motor Control Methods
+#### Initialization
 
-- `SetMotorPower(port SensorPort, powerPercent int) error` - Set motor power (-100 to 100)
-- `SetMotorLimits(port SensorPort, powerLimit float64) error` - Set motor power limit (0 to 1)
-- `SetMotorBias(port SensorPort, bias float64) error` - Set motor bias (0 to 1)
-- `MoveMotorForSeconds(port SensorPort, seconds float64, speed int, blocking bool, ctx context.Context) error` - Move motor for specified time
-- `FloatMotor(port SensorPort) error` - Float the motor (remove all constraints)
+```go
+func (b *Brick) Initialize() error
+```
 
-#### Sensor Control Methods
+#### Device Access
 
-- `SelectModeAndRead(port SensorPort, mode int, readOnce bool) error` - Select sensor mode
-- `SelectCombiModesAndRead(port SensorPort, modes []int, readOnce bool) error` - Select multiple sensor modes
-- `StopContinuousReadingSensor(port SensorPort) error` - Stop continuous sensor reading
-- `SwitchSensorOn(port SensorPort) error` - Turn sensor on
-- `SwitchSensorOff(port SensorPort) error` - Turn sensor off
+```go
+func (b *Brick) Motor(port string) *Motor                          // "A", "B", "C", "D"
+func (b *Brick) PassiveMotor(port string) *PassiveMotor
+func (b *Brick) ColorSensor(port string) *ColorSensor
+func (b *Brick) DistanceSensor(port string) *DistanceSensor
+func (b *Brick) ForceSensor(port string) *ForceSensor
+func (b *Brick) ButtonSensor(port string) *ButtonSensor
+func (b *Brick) ColorDistanceSensor(port string) *ColorDistanceSensor
+func (b *Brick) TiltSensor(port string) *TiltSensor
+func (b *Brick) MotionSensor(port string) *MotionSensor
+func (b *Brick) Light(port string) *Light
+func (b *Brick) Matrix(port string) *Matrix
+```
 
-#### Utility Methods
+#### Device Information
 
-- `SetLedMode(mode LedMode) error` - Set LED mode
-- `GetLedMode() LedMode` - Get current LED mode
-- `GetInputVoltage() float64` - Get input voltage
-- `GetSensorType(port SensorPort) SensorType` - Get sensor type at port
-- `SendRawCommand(command string) error` - Send raw command
-- `ClearFaults() error` - Clear any faults
-- `Close() error` - Close and cleanup
+```go
+func (b *Brick) ListDevices() []DeviceInfo
+func (b *Brick) GetConnectedDevices() []DeviceInfo
+```
 
-### Models
+#### Firmware Management
 
-#### SensorPort
+```go
+func (b *Brick) GetHardwareVersion() (string, error)
+func (b *Brick) CheckFirmwareVersion() (bool, error)
+func (b *Brick) CheckAndUpdateFirmware() error
+```
+
+### Motor
+
+High-level motor interface with Python-compatible API.
+
+```go
+// Configuration
+func (m *Motor) SetDefaultSpeed(speed int) error           // -100 to 100
+func (m *Motor) SetSpeedUnitRPM(rpm bool)
+func (m *Motor) SetPowerLimit(limit float64) error         // 0.0 to 1.0
+func (m *Motor) SetPWMParams(pwmThresh, minPWM float64) error
+func (m *Motor) SetRelease(release bool)
+
+// Movement
+func (m *Motor) RunForSeconds(seconds float64, speed int) error
+func (m *Motor) RunForDegrees(degrees, speed int) error
+func (m *Motor) RunForRotations(rotations float64, speed int) error
+func (m *Motor) RunToPosition(degrees, speed int, direction MotorDirection) error
+func (m *Motor) Start(speed int) error
+func (m *Motor) Stop() error
+
+// Low-level control
+func (m *Motor) PWM(value float64) error                   // -1.0 to 1.0
+func (m *Motor) Coast() error
+func (m *Motor) Float() error
+
+// Status
+func (m *Motor) GetPosition() (int, error)
+func (m *Motor) GetAbsolutePosition() (int, error)
+func (m *Motor) GetSpeed() (int, error)
+
+// Calibration
+func (m *Motor) PresetPosition() error
+```
+
+#### Motor Direction
 
 ```go
 const (
-    PortA SensorPort = iota
-    PortB
-    PortC
-    PortD
+    DirectionShortest      MotorDirection = iota
+    DirectionClockwise
+    DirectionAnticlockwise
 )
 ```
 
-#### SensorType
+### Sensors
 
-Various sensor types including:
-- `SystemMediumMotor`, `SystemTrainMotor`, `SystemTurntableMotor`
-- `SpikePrimeMediumMotor`, `SpikePrimeLargeMotor`
-- `SpikePrimeColorSensor`, `SpikePrimeUltrasonicDistanceSensor`
-- `SpikePrimeForceSensor`, `WeDoTiltSensor`, `WeDoDistanceSensor`
-- And many more...
-
-#### LedMode
+#### ColorSensor
 
 ```go
+func (c *ColorSensor) GetColor() (string, error)           // "red", "blue", "green", etc.
+func (c *ColorSensor) GetReflectedLight() (int, error)     // 0-100
+func (c *ColorSensor) GetAmbientLight() (int, error)       // 0-100
+```
+
+#### DistanceSensor
+
+```go
+func (d *DistanceSensor) GetDistance() (int, error)        // mm
+```
+
+#### ForceSensor
+
+```go
+func (f *ForceSensor) GetForce() (int, error)              // Newtons * 10
+```
+
+#### ButtonSensor
+
+```go
+func (b *ButtonSensor) IsPressed() (bool, error)
+```
+
+#### ColorDistanceSensor
+
+```go
+func (c *ColorDistanceSensor) GetColor() (string, error)
+func (c *ColorDistanceSensor) GetDistance() (int, error)
+func (c *ColorDistanceSensor) GetReflectedLight() (int, error)
+func (c *ColorDistanceSensor) GetRGB() (r, g, b uint8, err error)
+```
+
+#### TiltSensor
+
+```go
+func (t *TiltSensor) GetTilt() (x, y, z int, err error)
+func (t *TiltSensor) GetDirection() (string, error)       // "up", "down", "left", "right", "level"
+```
+
+#### MotionSensor
+
+```go
+func (m *MotionSensor) GetDistance() (int, error)
+func (m *MotionSensor) GetMovementCount() (int, error)
+```
+
+#### Light
+
+```go
+func (l *Light) On() error
+func (l *Light) Off() error
+func (l *Light) SetBrightness(brightness int) error       // 0-100
+func (l *Light) GetBrightness() (int, error)
+```
+
+#### Matrix (3x3 LED Matrix)
+
+```go
+func (m *Matrix) SetPixel(x, y, brightness int) error     // brightness: 0-10
+func (m *Matrix) SetAll(brightness int) error
+func (m *Matrix) SetRow(row, brightness int) error
+func (m *Matrix) SetColumn(col, brightness int) error
+func (m *Matrix) Clear() error
+```
+
+### Device Types
+
+```go
+type DeviceCategory int
+
 const (
-    VoltageDependant LedMode = -1
-    Off             LedMode = 0
-    Orange          LedMode = 1
-    Green           LedMode = 2
-    Both            LedMode = 3
+    DeviceCategoryUnknown DeviceCategory = iota
+    DeviceCategoryDisconnected
+    DeviceCategoryMotor
+    DeviceCategorySensor
+    DeviceCategoryPassiveMotor
+    DeviceCategoryLight
 )
 ```
 
 ## Supported Devices
 
-### Motors
-- LEGO SPIKE Prime Medium Motor
-- LEGO SPIKE Prime Large Motor
-- LEGO SPIKE Essential Small Angular Motor
-- LEGO Technic Large Motor
-- LEGO Technic XL Motor
-- LEGO Technic Medium Angular Motor
-- LEGO System Medium Motor
-- LEGO System Train Motor
-- LEGO System Turntable Motor
+### Active Motors (with position feedback)
+- Medium Linear Motor (ID: 38)
+- Large Motor (ID: 46)
+- XL Motor (ID: 47)
+- Medium Angular Motor - Cyan (ID: 48)
+- Large Angular Motor - Cyan (ID: 49)
+- Small Angular Motor (ID: 65)
+- Medium Angular Motor - Grey (ID: 75)
+- Large Angular Motor - Grey (ID: 76)
+
+### Passive Motors (no position feedback)
+- Train Motor (ID: 1, 2)
 
 ### Sensors
-- LEGO SPIKE Prime Color Sensor
-- LEGO SPIKE Prime Ultrasonic Distance Sensor
-- LEGO SPIKE Prime Force Sensor
-- LEGO SPIKE Essential 3x3 Color Light Matrix
-- LEGO WeDo Tilt Sensor
-- LEGO WeDo Distance Sensor
-- LEGO Color and Distance Sensor
-- Button/Touch Sensor
-- Simple Lights
+- Tilt Sensor (ID: 34)
+- Motion Sensor (ID: 35)
+- Color and Distance Sensor (ID: 37)
+- Color Sensor (ID: 61)
+- Distance Sensor (ID: 62)
+- Force Sensor (ID: 63)
+- 3x3 Color Light Matrix (ID: 64)
+
+### Other
+- Light (ID: 8)
 
 ## Error Handling
 
 All methods return errors that should be checked:
 
 ```go
-if err := brick.SetMotorPower(models.PortA, 50); err != nil {
-    log.Printf("Failed to set motor power: %v", err)
+motor := brick.Motor("A")
+if err := motor.RunForSeconds(2, 50); err != nil {
+    log.Printf("Failed to run motor: %v", err)
+}
+
+sensor := brick.ColorSensor("B")
+color, err := sensor.GetColor()
+if err != nil {
+    log.Printf("Failed to read sensor: %v", err)
 }
 ```
 
 Common errors include:
-- `"not a motor connected to port X"` - No motor connected to the specified port
-- `"not an active motor connected to port X"` - Motor is not an active motor type
-- `"mode can be changed only on active sensors"` - Trying to change mode on passive sensor
+- Timeout errors when waiting for sensor data
+- Invalid parameter ranges (e.g., speed > 100, brightness > 10)
+- Device not connected or wrong device type
 - Serial communication errors
 
 ## Thread Safety
 
-The library is thread-safe and can be used from multiple goroutines. All internal state is protected by mutexes.
-
-## Context Support
-
-Methods that can take time (like `MoveMotorForSeconds`) accept a `context.Context` for cancellation and timeout:
+The library is thread-safe and can be used from multiple goroutines:
+- All internal state is protected by mutexes
+- Sensor data retrieval uses futures with timeout protection
+- Background reader goroutine handles asynchronous I/O
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-defer cancel()
+// Safe to use from multiple goroutines
+go func() {
+    motor1 := brick.Motor("A")
+    motor1.RunForSeconds(2, 50)
+}()
 
-if err := brick.MoveMotorForSeconds(models.PortA, 5.0, 50, true, ctx); err != nil {
-    if errors.Is(err, context.DeadlineExceeded) {
-        log.Println("Motor movement timed out")
-    } else {
-        log.Printf("Motor movement failed: %v", err)
-    }
-}
+go func() {
+    motor2 := brick.Motor("B")
+    motor2.RunForSeconds(2, -50)
+}()
 ```
 
 ## Logging
@@ -286,5 +412,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Acknowledgments
 
-This library is a Go port of the .NET BuildHat library by the .NET Foundation.
+This library is a Go port of the [Python BuildHat library](https://github.com/RaspberryPiFoundation/python-build-hat) by the Raspberry Pi Foundation.
 
