@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/bezineb5/go-build-hat/workflows/Tests/badge.svg)](https://github.com/bezineb5/go-build-hat/actions/workflows/test.yml)
 [![CI](https://github.com/bezineb5/go-build-hat/workflows/CI/badge.svg)](https://github.com/bezineb5/go-build-hat/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/bezineb5/go-build-hat/branch/main/graph/badge.svg)](https://codecov.io/gh/bezineb5/go-build-hat)
+[![Coverage](https://img.shields.io/badge/Coverage-GitHub%20Native-blue.svg)](https://github.com/bezineb5/go-build-hat/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bezineb5/go-build-hat)](https://goreportcard.com/report/github.com/bezineb5/go-build-hat)
 [![Go Version](https://img.shields.io/badge/Go-1.24%2B-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
