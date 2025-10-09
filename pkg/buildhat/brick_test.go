@@ -3,7 +3,6 @@ package buildhat
 import (
 	"io"
 	"log/slog"
-	"strings"
 	"testing"
 )
 
@@ -90,17 +89,21 @@ func TestBrick_Initialize(t *testing.T) {
 		t.Fatalf("Expected at least 3 commands (version for bootloader check, version, list), got %d", len(writeHistory))
 	}
 
+	// Verify EXACT commands
 	// The firmware manager checks for bootloader mode by sending version
-	if !strings.Contains(writeHistory[0], "version") {
-		t.Errorf("Expected first version command (bootloader check): %s", writeHistory[0])
+	expectedVersion := "version\r"
+	if writeHistory[0] != expectedVersion {
+		t.Errorf("Expected first version command '%s', got: %s", expectedVersion, writeHistory[0])
 	}
 
 	// Then Initialize sends version and list
-	if !strings.Contains(writeHistory[1], "version") {
-		t.Errorf("Expected second version command: %s", writeHistory[1])
+	if writeHistory[1] != expectedVersion {
+		t.Errorf("Expected second version command '%s', got: %s", expectedVersion, writeHistory[1])
 	}
-	if !strings.Contains(writeHistory[2], "list") {
-		t.Errorf("Expected list command: %s", writeHistory[2])
+
+	expectedList := "list\r"
+	if writeHistory[2] != expectedList {
+		t.Errorf("Expected list command '%s', got: %s", expectedList, writeHistory[2])
 	}
 }
 
@@ -137,14 +140,15 @@ func TestBrick_GetHardwareVersion(t *testing.T) {
 		t.Errorf("Expected version '1737564117 2025-01-22T16:41:57+00:00', got '%s'", version)
 	}
 
-	// Verify version command was sent
+	// Verify EXACT version command was sent: "version\r"
 	writeHistory := mockPort.GetWriteHistory()
 	if len(writeHistory) == 0 {
 		t.Fatal("Expected version command to be sent")
 	}
 
-	if !strings.Contains(writeHistory[0], "version") {
-		t.Errorf("Expected version command: %s", writeHistory[0])
+	expectedCmd := "version\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 }
 
@@ -166,14 +170,15 @@ func TestBrick_GetVoltage(t *testing.T) {
 		t.Errorf("Expected voltage 8.2, got %f", voltage)
 	}
 
-	// Verify vin command was sent
+	// Verify EXACT vin command was sent: "vin\r"
 	writeHistory := mockPort.GetWriteHistory()
 	if len(writeHistory) == 0 {
 		t.Fatal("Expected vin command to be sent")
 	}
 
-	if !strings.Contains(writeHistory[0], "vin") {
-		t.Errorf("Expected vin command: %s", writeHistory[0])
+	expectedCmd := "vin\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 }
 
@@ -186,15 +191,16 @@ func TestBrick_ScanDevices(t *testing.T) {
 		t.Fatalf("ScanDevices failed: %v", err)
 	}
 
-	// Verify list command was sent
+	// Verify EXACT list command was sent: "list\r"
 	mockPort := brick.GetMockPort()
 	writeHistory := mockPort.GetWriteHistory()
 	if len(writeHistory) == 0 {
 		t.Fatal("Expected list command to be sent")
 	}
 
-	if !strings.Contains(writeHistory[0], "list") {
-		t.Errorf("Expected list command: %s", writeHistory[0])
+	expectedCmd := "list\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 }
 

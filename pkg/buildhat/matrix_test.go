@@ -1,7 +1,6 @@
 package buildhat
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -16,16 +15,22 @@ func TestMatrix_SetPixel(t *testing.T) {
 		t.Fatalf("SetPixel failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; write1 c2 0 0 0 0 85 0 0 0 0\r"
+	// SetPixel(1, 1, 5, 8) sets pixels[1][1] = {Color:5, Brightness:8}
+	// Matrix data: 9 pixels starting from [0][0], [0][1], [0][2], [1][0], [1][1]...
+	// Pixel [1][1] is at index 4 (0-indexed)
+	// Byte value: (brightness << 4) | color = (8 << 4) | 5 = 128 + 5 = 133 = 0x85
+	// All other pixels are 0
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 0 ; write1 c2 0 0 0 0 85 0 0 0 0\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 0") || !strings.Contains(lastCmd, "write1") {
-		t.Errorf("Expected write1 command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -99,16 +104,19 @@ func TestMatrix_SetAll(t *testing.T) {
 		t.Fatalf("SetAll failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 3 ; write1 c2 97 97 97 97 97 97 97 97 97\r"
+	// SetAll(7, 9) sets all 9 pixels to {Color:7, Brightness:9}
+	// Byte value: (9 << 4) | 7 = 144 + 7 = 151 = 0x97
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 3 ; write1 c2 97 97 97 97 97 97 97 97 97\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 3") || !strings.Contains(lastCmd, "write1") {
-		t.Errorf("Expected write1 command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -146,19 +154,22 @@ func TestMatrix_SetRow(t *testing.T) {
 	defer CleanupTestBrick(brick)
 
 	matrix := brick.Matrix(PortB)
+	mockPort := brick.GetMockPort()
 
-	for row := 0; row < 3; row++ {
-		err := matrix.SetRow(row, MatrixColor(6), 8)
-		if err != nil {
-			t.Fatalf("SetRow(%d) failed: %v", row, err)
-		}
+	// Test setting row 0
+	err := matrix.SetRow(0, MatrixColor(6), 8)
+	if err != nil {
+		t.Fatalf("SetRow(0) failed: %v", err)
 	}
 
-	// Verify commands were sent
-	mockPort := brick.GetMockPort()
+	// Verify EXACT command: "port 1 ; write1 c2 86 86 86 0 0 0 0 0 0\r"
+	// SetRow(0, 6, 8) sets pixels[0][0], [0][1], [0][2] to {Color:6, Brightness:8}
+	// Byte value: (8 << 4) | 6 = 128 + 6 = 134 = 0x86
 	commands := mockPort.GetWriteHistory()
-	if len(commands) < 3 {
-		t.Fatalf("Expected at least 3 commands, got %d", len(commands))
+	expectedCmd := "port 1 ; write1 c2 86 86 86 0 0 0 0 0 0\r"
+	lastCmd := commands[len(commands)-1]
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -184,19 +195,24 @@ func TestMatrix_SetColumn(t *testing.T) {
 	defer CleanupTestBrick(brick)
 
 	matrix := brick.Matrix(PortD)
+	mockPort := brick.GetMockPort()
 
-	for col := 0; col < 3; col++ {
-		err := matrix.SetColumn(col, MatrixColor(4), 7)
-		if err != nil {
-			t.Fatalf("SetColumn(%d) failed: %v", col, err)
-		}
+	// Test setting column 0
+	err := matrix.SetColumn(0, MatrixColor(4), 7)
+	if err != nil {
+		t.Fatalf("SetColumn(0) failed: %v", err)
 	}
 
-	// Verify commands were sent
-	mockPort := brick.GetMockPort()
+	// Verify EXACT command: "port 3 ; write1 c2 74 0 0 74 0 0 74 0 0\r"
+	// SetColumn(0, 4, 7) sets pixels[0][0], [1][0], [2][0] to {Color:4, Brightness:7}
+	// Matrix layout: [0][0], [0][1], [0][2], [1][0], [1][1], [1][2], [2][0], [2][1], [2][2]
+	// So positions 0, 3, 6 should be set
+	// Byte value: (7 << 4) | 4 = 112 + 4 = 116 = 0x74
 	commands := mockPort.GetWriteHistory()
-	if len(commands) < 3 {
-		t.Fatalf("Expected at least 3 commands, got %d", len(commands))
+	expectedCmd := "port 3 ; write1 c2 74 0 0 74 0 0 74 0 0\r"
+	lastCmd := commands[len(commands)-1]
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 

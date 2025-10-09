@@ -1,6 +1,7 @@
 package buildhat
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -16,16 +17,17 @@ func TestPassiveMotor_Start(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; set 75\r"
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 0 ; set 75\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 0") || !strings.Contains(lastCmd, "set 75") {
-		t.Errorf("Expected 'port 0 ; set 75' command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -41,11 +43,13 @@ func TestPassiveMotor_Start_DefaultSpeed(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
+	// Verify EXACT command: "port 1 ; set 50\r"
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
+	expectedCmd := "port 1 ; set 50\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 1") || !strings.Contains(lastCmd, "set 50") {
-		t.Errorf("Expected 'port 1 ; set 50' command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -60,11 +64,13 @@ func TestPassiveMotor_Stop(t *testing.T) {
 		t.Fatalf("Stop failed: %v", err)
 	}
 
+	// Verify EXACT command: "port 2 ; set 0\r"
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
+	expectedCmd := "port 2 ; set 0\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 2") || !strings.Contains(lastCmd, "set 0") {
-		t.Errorf("Expected 'port 2 ; set 0' command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -81,11 +87,13 @@ func TestPassiveMotor_SetSpeed(t *testing.T) {
 			t.Fatalf("SetSpeed(%d) failed: %v", speed, err)
 		}
 
+		// Verify EXACT command: "port 3 ; set <speed>\r"
 		mockPort := brick.GetMockPort()
 		commands := mockPort.GetWriteHistory()
+		expectedCmd := fmt.Sprintf("port 3 ; set %d\r", speed)
 		lastCmd := commands[len(commands)-1]
-		if !strings.Contains(lastCmd, "port 3") {
-			t.Errorf("Expected port 3 in command for speed %d, got: %s", speed, lastCmd)
+		if lastCmd != expectedCmd {
+			t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 		}
 	}
 }

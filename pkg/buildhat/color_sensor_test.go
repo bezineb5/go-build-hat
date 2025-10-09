@@ -1,7 +1,6 @@
 package buildhat
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -30,10 +29,11 @@ func TestColorSensor_GetColor(t *testing.T) {
 		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
 	}
 
-	// Check select mode command (mode 5 for RGBI)
+	// Verify EXACT select mode command: "port 3 ; select 5\r" (mode 5 for RGBI)
+	expectedCmd := "port 3 ; select 5\r"
 	selectCmd := writeHistory[0]
-	if !strings.Contains(selectCmd, "port 3") || !strings.Contains(selectCmd, "select 5") {
-		t.Errorf("Select mode command incorrect: %s", selectCmd)
+	if selectCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}
 
 	// Verify color values (converted from 0-1024 to 0-255)
@@ -69,10 +69,11 @@ func TestColorSensor_GetReflectedLight(t *testing.T) {
 		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
 	}
 
-	// Check select mode command
+	// Verify EXACT select mode command: "port 3 ; select 1\r" (mode 1 for reflected light)
+	expectedCmd := "port 3 ; select 1\r"
 	selectCmd := writeHistory[0]
-	if !strings.Contains(selectCmd, "port 3") || !strings.Contains(selectCmd, "select 1") {
-		t.Errorf("Select mode command incorrect: %s", selectCmd)
+	if selectCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}
 
 	// Verify light value
@@ -106,10 +107,11 @@ func TestColorSensor_GetAmbientLight(t *testing.T) {
 		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
 	}
 
-	// Check select mode command
+	// Verify EXACT select mode command: "port 3 ; select 2\r" (mode 2 for ambient light)
+	expectedCmd := "port 3 ; select 2\r"
 	selectCmd := writeHistory[0]
-	if !strings.Contains(selectCmd, "port 3") || !strings.Contains(selectCmd, "select 2") {
-		t.Errorf("Select mode command incorrect: %s", selectCmd)
+	if selectCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}
 
 	// Verify light value

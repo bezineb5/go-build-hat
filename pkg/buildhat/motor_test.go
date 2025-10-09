@@ -62,6 +62,7 @@ func TestMotor_RunForRotations(t *testing.T) {
 	mockPort.SimulateSensorResponse("0", 0, "0 0 0") // speed, position, aposition
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Run for 2 rotations at speed 50
 	err := motor.RunForRotations(2.0, 50)
@@ -69,22 +70,37 @@ func TestMotor_RunForRotations(t *testing.T) {
 		t.Fatalf("RunForRotations failed: %v", err)
 	}
 
-	// Verify commands were sent
+	// Verify EXACT command sequence
 	writeHistory := mockPort.GetWriteHistory()
-	if len(writeHistory) < 2 {
-		t.Fatalf("Expected at least 2 commands, got %d", len(writeHistory))
+	if len(writeHistory) == 0 {
+		t.Fatal("No commands were sent")
 	}
 
-	// Should contain select and ramp commands
+	// Should have a ramp command with EXACT format:
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 2.000000 <duration> 0\r"
+	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 2.000000"
 	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "ramp") {
+		if strings.HasPrefix(cmd, expectedPrefix) && strings.HasSuffix(cmd, " 0\r") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("Expected ramp command to be sent")
+		t.Errorf("Expected exact ramp command with prefix '%s', got: %v", expectedPrefix, writeHistory)
+	}
+
+	// Should also have a coast command at the end
+	expectedCoast := "port 0 ; coast\r"
+	foundCoast := false
+	for _, cmd := range writeHistory {
+		if cmd == expectedCoast {
+			foundCoast = true
+			break
+		}
+	}
+	if !foundCoast {
+		t.Errorf("Expected coast command '%s', got: %v", expectedCoast, writeHistory)
 	}
 }
 
@@ -98,6 +114,7 @@ func TestMotor_RunForDegrees(t *testing.T) {
 	mockPort.SimulateSensorResponse("0", 0, "0 0 0")
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Run for 360 degrees at speed 50
 	err := motor.RunForDegrees(360, 50)
@@ -105,17 +122,37 @@ func TestMotor_RunForDegrees(t *testing.T) {
 		t.Fatalf("RunForDegrees failed: %v", err)
 	}
 
-	// Verify commands were sent
+	// Verify EXACT command sequence
 	writeHistory := mockPort.GetWriteHistory()
-	foundRamp := false
-	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "ramp") {
-			foundRamp = true
-		}
+	if len(writeHistory) == 0 {
+		t.Fatal("No commands were sent")
 	}
 
-	if !foundRamp {
-		t.Error("Expected ramp command")
+	// Should have exact ramp command:
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 1.000000 <duration> 0\r"
+	// 360 degrees = 1 rotation
+	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 1.000000"
+	found := false
+	for _, cmd := range writeHistory {
+		if strings.HasPrefix(cmd, expectedPrefix) && strings.HasSuffix(cmd, " 0\r") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected exact ramp command with prefix '%s', got: %v", expectedPrefix, writeHistory)
+	}
+
+	// Should have coast command
+	expectedCoast := "port 0 ; coast\r"
+	foundCoast := false
+	for _, cmd := range writeHistory {
+		if cmd == expectedCoast {
+			foundCoast = true
+		}
+	}
+	if !foundCoast {
+		t.Errorf("Expected coast command '%s', got: %v", expectedCoast, writeHistory)
 	}
 }
 
@@ -126,6 +163,7 @@ func TestMotor_RunForDuration(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Run for 0.5 seconds to make test faster
 	err := motor.RunForDuration(500*time.Millisecond, 50)
@@ -134,28 +172,31 @@ func TestMotor_RunForDuration(t *testing.T) {
 		t.Fatalf("RunForDuration failed: %v", err)
 	}
 
-	// Note: In tests with mock, we use a small delay for speed
-	// Real hardware will take the actual specified duration
-
-	// Verify pulse command was sent with correct speed value
+	// Verify EXACT pulse command was sent:
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100 0.01 ; set pulse 50.000000 0.0 0.500000 0\r"
 	writeHistory := mockPort.GetWriteHistory()
+	expectedPulse := "port 0 ; select 0 ; selrate 10 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100 0.01 ; set pulse 50.000000 0.0 0.500000 0\r"
 	foundPulse := false
-	foundCorrectSpeed := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "pulse") {
+		if cmd == expectedPulse {
 			foundPulse = true
-			// Verify speed is 50, not 2.5 (should be "set pulse 50" not "set pulse 2.5")
-			if strings.Contains(cmd, "pulse 50") || strings.Contains(cmd, "pulse 5.0") {
-				foundCorrectSpeed = true
-			}
+			break
 		}
 	}
-
 	if !foundPulse {
-		t.Error("Expected pulse command")
+		t.Errorf("Expected exact pulse command '%s', got: %v", expectedPulse, writeHistory)
 	}
-	if !foundCorrectSpeed {
-		t.Errorf("Expected 'set pulse 50', got commands: %v", writeHistory)
+
+	// Should have coast command
+	expectedCoast := "port 0 ; coast\r"
+	foundCoast := false
+	for _, cmd := range writeHistory {
+		if cmd == expectedCoast {
+			foundCoast = true
+		}
+	}
+	if !foundCoast {
+		t.Errorf("Expected coast command '%s', got: %v", expectedCoast, writeHistory)
 	}
 }
 
@@ -165,11 +206,11 @@ func TestMotor_RunToPosition(t *testing.T) {
 
 	mockPort := brick.GetMockPort()
 
-	// Queue motor data multiple times since getData() will request fresh data
-	// Speed, position, absolute_position format: speed pos apos
+	// Queue motor data: speed=0, position=0, aposition=0
 	mockPort.SimulateSensorResponse("0", 0, "0 0 0")
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Queue more sensor data since getData() sends select command and waits for response
 	time.Sleep(20 * time.Millisecond) // Let first data be cached
@@ -181,28 +222,40 @@ func TestMotor_RunToPosition(t *testing.T) {
 		}
 	}()
 
-	// Test basic position move
+	// Test basic position move: 90 degrees at 50% speed from position 0
+	// Expected calculation:
+	// - Current pos: 0 degrees = 0.0 rotations
+	// - Target: 90 degrees absolute = 0.25 rotations
+	// - Duration: (0.25 - 0.0) / (50 * 0.05) = 0.1 seconds
 	err := motor.RunToPosition(90, 50, DirectionShortest)
 	if err != nil {
 		t.Fatalf("RunToPosition failed: %v", err)
 	}
 
-	// Verify commands were sent
+	// Verify EXACT ramp command
 	writeHistory := mockPort.GetWriteHistory()
-	if len(writeHistory) == 0 {
-		t.Fatal("Expected commands to be sent")
-	}
-
-	// Should contain port selection and ramp/movement commands
-	hasPortCmd := false
+	expectedRamp := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 0.250000 0.100000 0\r"
+	foundRamp := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "port 0") {
-			hasPortCmd = true
+		if cmd == expectedRamp {
+			foundRamp = true
 			break
 		}
 	}
-	if !hasPortCmd {
-		t.Error("Expected port command to be sent")
+	if !foundRamp {
+		t.Errorf("Expected exact ramp command '%s', got: %v", expectedRamp, writeHistory)
+	}
+
+	// Should have coast command at end
+	expectedCoast := "port 0 ; coast\r"
+	foundCoast := false
+	for _, cmd := range writeHistory {
+		if cmd == expectedCoast {
+			foundCoast = true
+		}
+	}
+	if !foundCoast {
+		t.Errorf("Expected coast command '%s', got: %v", expectedCoast, writeHistory)
 	}
 }
 
@@ -245,6 +298,7 @@ func TestMotor_StartStop(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Start motor
 	err := motor.Start(50)
@@ -257,20 +311,19 @@ func TestMotor_StartStop(t *testing.T) {
 		t.Errorf("Expected run mode FREE, got %d", motor.runMode)
 	}
 
-	// Verify the actual speed value sent (should be 50, not 2.5!)
+	// Verify EXACT start command:
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100 0.01 ; set 50.000000\r"
 	writeHistory := mockPort.GetWriteHistory()
-	foundCorrectSpeed := false
+	expectedStart := "port 0 ; select 0 ; selrate 10 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100 0.01 ; set 50.000000\r"
+	foundStart := false
 	for _, cmd := range writeHistory {
-		// Check for "set 50" (with possible decimal), not "set 2.5"
-		if strings.Contains(cmd, "set 5") && strings.Contains(cmd, "pid") {
-			// More precise: should contain "set 50" not "set 2.5"
-			if strings.Contains(cmd, "set 50") || strings.Contains(cmd, "set 5.0") {
-				foundCorrectSpeed = true
-			}
+		if cmd == expectedStart {
+			foundStart = true
+			break
 		}
 	}
-	if !foundCorrectSpeed {
-		t.Errorf("Expected 'set 50' command, got commands: %v", writeHistory)
+	if !foundStart {
+		t.Errorf("Expected exact start command '%s', got: %v", expectedStart, writeHistory)
 	}
 
 	// Stop motor
@@ -284,17 +337,19 @@ func TestMotor_StartStop(t *testing.T) {
 		t.Errorf("Expected run mode NONE, got %d", motor.runMode)
 	}
 
-	// Verify coast command was sent (get fresh history after Stop())
+	// Verify EXACT coast command
 	writeHistory = mockPort.GetWriteHistory()
+	expectedCoast := "port 0 ; coast\r"
 	foundCoast := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "coast") {
+		if cmd == expectedCoast {
 			foundCoast = true
+			break
 		}
 	}
 
 	if !foundCoast {
-		t.Error("Expected coast command")
+		t.Errorf("Expected exact coast command '%s', got: %v", expectedCoast, writeHistory)
 	}
 }
 
@@ -396,6 +451,7 @@ func TestMotor_SetPowerLimit(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Set valid power limit
 	err := motor.SetPowerLimit(0.5)
@@ -403,17 +459,19 @@ func TestMotor_SetPowerLimit(t *testing.T) {
 		t.Fatalf("SetPowerLimit failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; port_plimit 0.50\r"
 	writeHistory := mockPort.GetWriteHistory()
+	expectedCmd := "port 0 ; port_plimit 0.50\r"
 	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "port_plimit") && strings.Contains(cmd, "0.5") {
+		if cmd == expectedCmd {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected port_plimit command with value 0.5")
+		t.Errorf("Expected exact command '%s', got: %v", expectedCmd, writeHistory)
 	}
 
 	// Test invalid limit (too high)
@@ -436,6 +494,7 @@ func TestMotor_SetPWMParams(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Set valid PWM params
 	err := motor.SetPWMParams(0.7, 0.02)
@@ -443,17 +502,19 @@ func TestMotor_SetPWMParams(t *testing.T) {
 		t.Fatalf("SetPWMParams failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; pwmparams 0.70 0.02\r"
 	writeHistory := mockPort.GetWriteHistory()
+	expectedCmd := "port 0 ; pwmparams 0.70 0.02\r"
 	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "pwmparams") {
+		if cmd == expectedCmd {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected pwmparams command")
+		t.Errorf("Expected exact command '%s', got: %v", expectedCmd, writeHistory)
 	}
 }
 
@@ -464,6 +525,7 @@ func TestMotor_PWM(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Set valid PWM value
 	err := motor.PWM(0.5)
@@ -471,17 +533,19 @@ func TestMotor_PWM(t *testing.T) {
 		t.Fatalf("PWM failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; pwm ; set 0.50\r"
 	writeHistory := mockPort.GetWriteHistory()
+	expectedCmd := "port 0 ; pwm ; set 0.50\r"
 	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "pwm") && strings.Contains(cmd, "set") {
+		if cmd == expectedCmd {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected pwm set command")
+		t.Errorf("Expected exact command '%s', got: %v", expectedCmd, writeHistory)
 	}
 
 	// Test invalid PWM value
@@ -498,23 +562,26 @@ func TestMotor_PresetPosition(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	err := motor.PresetPosition()
 	if err != nil {
 		t.Fatalf("PresetPosition failed: %v", err)
 	}
 
-	// Verify preset command was sent
+	// Verify EXACT command: "port 0 ; preset\r"
 	writeHistory := mockPort.GetWriteHistory()
+	expectedCmd := "port 0 ; preset\r"
 	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "preset") {
+		if cmd == expectedCmd {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected preset command")
+		t.Errorf("Expected exact command '%s', got: %v", expectedCmd, writeHistory)
 	}
 }
 
@@ -525,6 +592,7 @@ func TestMotor_CoastAndFloat(t *testing.T) {
 	mockPort := brick.GetMockPort()
 
 	motor := brick.Motor(PortA)
+	mockPort.ClearWriteHistory() // Clear initialization commands
 
 	// Test Coast
 	err := motor.Coast()
@@ -532,23 +600,38 @@ func TestMotor_CoastAndFloat(t *testing.T) {
 		t.Fatalf("Coast failed: %v", err)
 	}
 
+	// Verify EXACT command: "port 0 ; coast\r"
+	writeHistory := mockPort.GetWriteHistory()
+	expectedCmd := "port 0 ; coast\r"
+	coastCount := 0
+	for _, cmd := range writeHistory {
+		if cmd == expectedCmd {
+			coastCount++
+		}
+	}
+	if coastCount < 1 {
+		t.Errorf("Expected at least 1 exact coast command '%s', got: %v", expectedCmd, writeHistory)
+	}
+
+	mockPort.ClearWriteHistory()
+
 	// Test Float (should be same as Coast)
 	err = motor.Float()
 	if err != nil {
 		t.Fatalf("Float failed: %v", err)
 	}
 
-	// Verify coast commands were sent
-	writeHistory := mockPort.GetWriteHistory()
-	coastCount := 0
+	// Verify Float also sends exact coast command
+	writeHistory = mockPort.GetWriteHistory()
+	found := false
 	for _, cmd := range writeHistory {
-		if strings.Contains(cmd, "coast") {
-			coastCount++
+		if cmd == expectedCmd {
+			found = true
+			break
 		}
 	}
-
-	if coastCount < 2 {
-		t.Errorf("Expected at least 2 coast commands, got %d", coastCount)
+	if !found {
+		t.Errorf("Expected exact command '%s' for Float, got: %v", expectedCmd, writeHistory)
 	}
 }
 

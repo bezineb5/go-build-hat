@@ -17,6 +17,16 @@ func TestMotionSensor_GetDistance(t *testing.T) {
 		t.Fatalf("GetDistance failed: %v", err)
 	}
 
+	// Verify EXACT command: "port 0 ; select 0\r" (mode 0 for distance)
+	writeHistory := mockPort.GetWriteHistory()
+	if len(writeHistory) == 0 {
+		t.Fatal("Expected command to be sent")
+	}
+	expectedCmd := "port 0 ; select 0\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
+	}
+
 	if distance != 100 {
 		t.Errorf("Expected distance 100, got %d", distance)
 	}
@@ -33,6 +43,16 @@ func TestMotionSensor_GetMovementCount(t *testing.T) {
 	count, err := sensor.GetMovementCount()
 	if err != nil {
 		t.Fatalf("GetMovementCount failed: %v", err)
+	}
+
+	// Verify EXACT command: "port 0 ; select 1\r" (mode 1 for movement count)
+	writeHistory := mockPort.GetWriteHistory()
+	if len(writeHistory) == 0 {
+		t.Fatal("Expected command to be sent")
+	}
+	expectedCmd := "port 0 ; select 1\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 
 	if count != 42 {
@@ -56,6 +76,16 @@ func TestMotionSensor_AllPorts(t *testing.T) {
 			distance, err := sensor.GetDistance()
 			if err != nil {
 				t.Fatalf("GetDistance failed for port %s: %v", port, err)
+			}
+
+			// Verify EXACT command for this port
+			writeHistory := mockPort.GetWriteHistory()
+			if len(writeHistory) == 0 {
+				t.Fatal("Expected command to be sent")
+			}
+			expectedCmd := "port " + portNum + " ; select 0\r"
+			if writeHistory[0] != expectedCmd {
+				t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 			}
 
 			if distance != 50 {

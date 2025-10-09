@@ -1,7 +1,6 @@
 package buildhat
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -16,16 +15,18 @@ func TestLight_On(t *testing.T) {
 		t.Fatalf("On failed: %v", err)
 	}
 
-	// Verify command was sent
+	// Verify EXACT command: "port 0 ; on ; set 1.00\r"
+	// On() calls SetBrightness(100) which converts to 1.00
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 0 ; on ; set 1.00\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 0") {
-		t.Errorf("Expected port 0 in command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -40,16 +41,17 @@ func TestLight_Off(t *testing.T) {
 		t.Fatalf("Off failed: %v", err)
 	}
 
-	// Verify coast command was sent
+	// Verify EXACT command: "port 1 ; coast\r"
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 1 ; coast\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 1") || !strings.Contains(lastCmd, "coast") {
-		t.Errorf("Expected 'port 1 ; coast' command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 
@@ -93,13 +95,14 @@ func TestLight_SetBrightness_Values(t *testing.T) {
 		t.Fatalf("SetBrightness(75) failed: %v", err)
 	}
 
+	// Verify EXACT command: "port 3 ; on ; set 0.75\r"
+	// 75/100 = 0.75, formatted as %.2f = 0.75
 	mockPort := brick.GetMockPort()
 	commands := mockPort.GetWriteHistory()
+	expectedCmd := "port 3 ; on ; set 0.75\r"
 	lastCmd := commands[len(commands)-1]
-
-	// Should contain port 3 and set command with value ~0.75
-	if !strings.Contains(lastCmd, "port 3") || !strings.Contains(lastCmd, "set") {
-		t.Errorf("Expected brightness command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 

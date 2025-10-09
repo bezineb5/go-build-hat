@@ -1,7 +1,6 @@
 package buildhat
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -61,14 +60,15 @@ func TestFirmwareManager_BootloaderDetection(t *testing.T) {
 		t.Error("Expected bootloader mode to be detected")
 	}
 
-	// Verify version command was sent
+	// Verify EXACT version command was sent: "version\r"
 	writeHistory := mockPort.GetWriteHistory()
 	if len(writeHistory) == 0 {
 		t.Fatal("Expected version command to be sent")
 	}
 
-	if !strings.Contains(writeHistory[0], "version") {
-		t.Errorf("Expected version command: %s", writeHistory[0])
+	expectedCmd := "version\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 }
 
@@ -87,10 +87,15 @@ func TestFirmwareManager_NormalFirmwareDetection(t *testing.T) {
 		t.Error("Expected normal firmware mode, not bootloader")
 	}
 
-	// Verify version command was sent
+	// Verify EXACT version command was sent: "version\r"
 	writeHistory := mockPort.GetWriteHistory()
 	if len(writeHistory) == 0 {
 		t.Fatal("Expected version command to be sent")
+	}
+
+	expectedCmd := "version\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 }
 

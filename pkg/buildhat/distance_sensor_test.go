@@ -1,7 +1,6 @@
 package buildhat
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -23,15 +22,16 @@ func TestDistanceSensor_GetDistance(t *testing.T) {
 		t.Errorf("Expected distance 150mm, got %d", distance)
 	}
 
-	// Verify command
+	// Verify EXACT command: "port 0 ; select 0\r"
 	commands := mockPort.GetWriteHistory()
 	if len(commands) == 0 {
 		t.Fatal("No commands were sent")
 	}
 
+	expectedCmd := "port 0 ; select 0\r"
 	lastCmd := commands[len(commands)-1]
-	if !strings.Contains(lastCmd, "port 0") || !strings.Contains(lastCmd, "select 0") {
-		t.Errorf("Expected select mode command, got: %s", lastCmd)
+	if lastCmd != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, lastCmd)
 	}
 }
 

@@ -21,9 +21,19 @@ func TestTiltSensor_AllMethods(t *testing.T) {
 	// Test GetTilt - queue response just before calling
 	mockPort.SimulateSensorResponse("0", 0, "15 -10 5") // X Y Z for GetTilt
 	time.Sleep(10 * time.Millisecond)                   // Let reader process it
+	mockPort.ClearWriteHistory()                        // Clear any previous commands
 	tilt, err := sensor.GetTilt()
 	if err != nil {
 		t.Fatalf("GetTilt failed: %v", err)
+	}
+
+	// Verify EXACT command: "port 0 ; select 0\r" (mode 0 for tilt)
+	writeHistory := mockPort.GetWriteHistory()
+	if len(writeHistory) > 0 {
+		expectedCmd := "port 0 ; select 0\r"
+		if writeHistory[0] != expectedCmd {
+			t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
+		}
 	}
 
 	expected := struct{ X, Y, Z int }{X: 15, Y: -10, Z: 5}
@@ -34,9 +44,19 @@ func TestTiltSensor_AllMethods(t *testing.T) {
 	// Test GetDirection - queue response just before calling
 	mockPort.SimulateSensorResponse("0", 0, "46 -10 5") // X > 45 = TiltRight for GetDirection
 	time.Sleep(10 * time.Millisecond)                   // Let reader process it
+	mockPort.ClearWriteHistory()                        // Clear previous commands
 	direction, err := sensor.GetDirection()
 	if err != nil {
 		t.Fatalf("GetDirection failed: %v", err)
+	}
+
+	// Verify EXACT command: "port 0 ; select 0\r" (GetDirection calls GetTilt internally)
+	writeHistory = mockPort.GetWriteHistory()
+	if len(writeHistory) > 0 {
+		expectedCmd := "port 0 ; select 0\r"
+		if writeHistory[0] != expectedCmd {
+			t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
+		}
 	}
 
 	if direction != TiltRight {
@@ -56,6 +76,16 @@ func TestTiltSensor_GetTilt(t *testing.T) {
 	tilt, err := sensor.GetTilt()
 	if err != nil {
 		t.Fatalf("GetTilt failed: %v", err)
+	}
+
+	// Verify EXACT command: "port 0 ; select 0\r" (mode 0 for tilt)
+	writeHistory := mockPort.GetWriteHistory()
+	if len(writeHistory) == 0 {
+		t.Fatal("Expected command to be sent")
+	}
+	expectedCmd := "port 0 ; select 0\r"
+	if writeHistory[0] != expectedCmd {
+		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 	}
 
 	expected := struct{ X, Y, Z int }{X: 15, Y: -10, Z: 5}
@@ -91,6 +121,16 @@ func TestTiltSensor_GetDirection_AllDirections(t *testing.T) {
 			direction, err := sensor.GetDirection()
 			if err != nil {
 				t.Fatalf("GetDirection failed: %v", err)
+			}
+
+			// Verify EXACT command: "port 0 ; select 0\r" (GetDirection calls GetTilt)
+			writeHistory := mockPort.GetWriteHistory()
+			if len(writeHistory) == 0 {
+				t.Fatal("Expected command to be sent")
+			}
+			expectedCmd := "port 0 ; select 0\r"
+			if writeHistory[0] != expectedCmd {
+				t.Errorf("Expected exact command '%s', got: %s", expectedCmd, writeHistory[0])
 			}
 
 			if direction != tt.expected {

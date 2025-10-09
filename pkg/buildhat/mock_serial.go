@@ -173,6 +173,14 @@ func (m *MockSerialPort) GetWriteHistory() []string {
 	return append([]string{}, m.writeHistory...)
 }
 
+// ClearWriteHistory clears the write history
+func (m *MockSerialPort) ClearWriteHistory() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.writeHistory = make([]string, 0)
+}
+
 // GetReadHistory returns all data read from the port
 func (m *MockSerialPort) GetReadHistory() []string {
 	m.mu.RLock()
