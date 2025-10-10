@@ -104,7 +104,7 @@ func (b *Brick) Initialize() error {
 	}
 
 	// Send version command to check state
-	if err := b.writeCommand("version"); err != nil {
+	if err := b.writeCommand(Version()); err != nil {
 		return err
 	}
 
@@ -112,7 +112,7 @@ func (b *Brick) Initialize() error {
 	time.Sleep(2 * time.Second)
 
 	// Send list command to scan devices
-	if err := b.writeCommand("list"); err != nil {
+	if err := b.writeCommand(List()); err != nil {
 		return err
 	}
 
@@ -383,8 +383,8 @@ func (b *Brick) handleSensorData(portID int, line string) {
 }
 
 // writeCommand sends a command to the BuildHat
-func (b *Brick) writeCommand(command string) error {
-	cmd := command
+func (b *Brick) writeCommand(command Command) error {
+	cmd := command.String()
 	if !strings.HasSuffix(cmd, "\r") {
 		cmd += "\r"
 	}
@@ -398,7 +398,7 @@ func (b *Brick) GetHardwareVersion() (string, error) {
 	future := make(chan string, 1)
 	b.versionFutures = append(b.versionFutures, future)
 
-	if err := b.writeCommand("version"); err != nil {
+	if err := b.writeCommand(Version()); err != nil {
 		return "", err
 	}
 
@@ -415,7 +415,7 @@ func (b *Brick) GetVoltage() (float64, error) {
 	future := make(chan float64, 1)
 	b.vinFutures = append(b.vinFutures, future)
 
-	if err := b.writeCommand("vin"); err != nil {
+	if err := b.writeCommand(Vin()); err != nil {
 		return 0, err
 	}
 
@@ -429,7 +429,7 @@ func (b *Brick) GetVoltage() (float64, error) {
 
 // ScanDevices scans for connected devices
 func (b *Brick) ScanDevices() error {
-	return b.writeCommand("list")
+	return b.writeCommand(List())
 }
 
 // getSensorData waits for sensor data from a specific port

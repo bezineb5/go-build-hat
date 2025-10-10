@@ -21,8 +21,7 @@ type ColorSensor struct {
 // GetColor gets the current color reading as RGBA
 func (s *ColorSensor) GetColor() (Color, error) {
 	// Set to color RGB mode (mode 5 - RGBI)
-	cmd := fmt.Sprintf("port %d ; select 5", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(5))); err != nil {
 		return Color{}, err
 	}
 
@@ -53,8 +52,7 @@ func (s *ColorSensor) GetColor() (Color, error) {
 // GetReflectedLight gets the reflected light reading (0-100%)
 func (s *ColorSensor) GetReflectedLight() (int, error) {
 	// Set to reflected light mode (mode 1)
-	cmd := fmt.Sprintf("port %d ; select 1", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(1))); err != nil {
 		return 0, err
 	}
 
@@ -79,8 +77,7 @@ func (s *ColorSensor) GetReflectedLight() (int, error) {
 // GetAmbientLight gets the ambient light reading (0-100%)
 func (s *ColorSensor) GetAmbientLight() (int, error) {
 	// Set to ambient light mode (mode 2)
-	cmd := fmt.Sprintf("port %d ; select 2", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(2))); err != nil {
 		return 0, err
 	}
 

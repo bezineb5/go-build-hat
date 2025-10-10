@@ -77,8 +77,8 @@ func TestMotor_RunForRotations(t *testing.T) {
 	}
 
 	// Should have a ramp command with EXACT format:
-	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 2.000000 <duration> 0\r"
-	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 2.000000"
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 2.000000 <duration> 0\r"
+	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 2.000000"
 	found := false
 	for _, cmd := range writeHistory {
 		if strings.HasPrefix(cmd, expectedPrefix) && strings.HasSuffix(cmd, " 0\r") {
@@ -129,9 +129,9 @@ func TestMotor_RunForDegrees(t *testing.T) {
 	}
 
 	// Should have exact ramp command:
-	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 1.000000 <duration> 0\r"
+	// "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 1.000000 <duration> 0\r"
 	// 360 degrees = 1 rotation
-	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 1.000000"
+	expectedPrefix := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 1.000000"
 	found := false
 	for _, cmd := range writeHistory {
 		if strings.HasPrefix(cmd, expectedPrefix) && strings.HasSuffix(cmd, " 0\r") {
@@ -234,7 +234,7 @@ func TestMotor_RunToPosition(t *testing.T) {
 
 	// Verify EXACT ramp command
 	writeHistory := mockPort.GetWriteHistory()
-	expectedRamp := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp 0.000000 0.250000 0.100000 0\r"
+	expectedRamp := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 0.250000 0.100000 0\r"
 	foundRamp := false
 	for _, cmd := range writeHistory {
 		if cmd == expectedRamp {

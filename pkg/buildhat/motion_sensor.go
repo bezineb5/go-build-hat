@@ -21,8 +21,7 @@ type MotionSensor struct {
 // GetDistance gets the distance reading from the motion sensor
 func (s *MotionSensor) GetDistance() (int, error) {
 	// Set to distance mode (mode 0)
-	cmd := fmt.Sprintf("port %d ; select 0", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(0))); err != nil {
 		return 0, err
 	}
 
@@ -47,8 +46,7 @@ func (s *MotionSensor) GetDistance() (int, error) {
 // GetMovementCount gets the movement count (number of detected motions)
 func (s *MotionSensor) GetMovementCount() (int, error) {
 	// Set to movement count mode (mode 1)
-	cmd := fmt.Sprintf("port %d ; select 1", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(1))); err != nil {
 		return 0, err
 	}
 

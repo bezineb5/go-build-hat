@@ -30,8 +30,7 @@ func (l *Light) SetBrightness(brightness int) error {
 
 	// Convert brightness to 0.0-1.0 range
 	value := float64(brightness) / 100.0
-	cmd := fmt.Sprintf("port %d ; on ; set %.2f", l.port, value)
-	return l.brick.writeCommand(cmd)
+	return l.brick.writeCommand(Compound(SelectPort(l.port), On(), SetConstantFormatted(value, "%.2f")))
 }
 
 // On turns the light on at full brightness
@@ -42,8 +41,7 @@ func (l *Light) On() error {
 // Off turns the light off
 func (l *Light) Off() error {
 	// Using coast to turn off lights completely
-	cmd := fmt.Sprintf("port %d ; coast", l.port)
-	return l.brick.writeCommand(cmd)
+	return l.brick.writeCommand(Compound(SelectPort(l.port), Coast()))
 }
 
 // GetBrightness gets the current brightness reading (not supported on all lights)

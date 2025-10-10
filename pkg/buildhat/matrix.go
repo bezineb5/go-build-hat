@@ -163,16 +163,6 @@ func (m *Matrix) display() error {
 		}
 	}
 
-	// Convert to hex string for write1 command
-	hexStr := ""
-	for i, b := range data {
-		if i > 0 {
-			hexStr += " "
-		}
-		hexStr += fmt.Sprintf("%x", b)
-	}
-
 	// Send using write1 command
-	cmd := fmt.Sprintf("port %d ; write1 %s", m.port, hexStr)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), Write1(data...)))
 }

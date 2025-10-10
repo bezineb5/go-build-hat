@@ -72,7 +72,7 @@ func (fm *FirmwareManager) updateFirmware() error {
 	fm.brick.logger.Info("Firmware loaded", "size", len(firmware), "signature_size", len(signature))
 
 	// Step 1: Clear and get the prompt
-	if err := fm.brick.writeCommand("clear"); err != nil {
+	if err := fm.brick.writeCommand(Clear()); err != nil {
 		return fmt.Errorf("failed to clear: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -80,8 +80,7 @@ func (fm *FirmwareManager) updateFirmware() error {
 
 	// Step 2: Load the firmware
 	checksum := fm.calculateChecksum(firmware)
-	loadCmd := fmt.Sprintf("load %d %d", len(firmware), checksum)
-	if err := fm.brick.writeCommand(loadCmd); err != nil {
+	if err := fm.brick.writeCommand(Load(len(firmware), int(checksum))); err != nil {
 		return fmt.Errorf("failed to load firmware: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -107,8 +106,7 @@ func (fm *FirmwareManager) updateFirmware() error {
 	// Step 3: Load the signature
 	fm.brick.scanner.Scan() // Clear any pending data
 
-	sigCmd := fmt.Sprintf("signature %d", len(signature))
-	if err := fm.brick.writeCommand(sigCmd); err != nil {
+	if err := fm.brick.writeCommand(SignatureLoad(len(signature))); err != nil {
 		return fmt.Errorf("failed to load signature: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -129,7 +127,7 @@ func (fm *FirmwareManager) updateFirmware() error {
 	time.Sleep(10 * time.Millisecond)
 
 	// Step 4: Reboot
-	if err := fm.brick.writeCommand("reboot"); err != nil {
+	if err := fm.brick.writeCommand(Reboot()); err != nil {
 		return fmt.Errorf("failed to reboot: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)

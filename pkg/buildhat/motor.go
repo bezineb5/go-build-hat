@@ -38,9 +38,12 @@ func (b *Brick) Motor(port Port) *Motor {
 
 	// Initialize motor with default settings
 	// Set combi mode: mode 1 (speed), mode 2 (position), mode 3 (absolute position)
-	// Format: "port <n> ; combi 0 1 0 2 0 3 0 ; select 0 ; selrate 10"
-	initCmd := fmt.Sprintf("port %d ; combi 0 1 0 2 0 3 0 ; select 0 ; selrate 10", port.Int())
-	_ = b.writeCommand(initCmd)
+	_ = b.writeCommand(Compound(
+		Port(port.Int()),
+		Combi(0, ModeDataset{Mode: 1, Offset: 0}, ModeDataset{Mode: 2, Offset: 0}, ModeDataset{Mode: 3, Offset: 0}),
+		Select(0),
+		SelRate(10),
+	))
 
 	_ = motor.SetPowerLimit(0.7)
 	_ = motor.SetPWMParams(0.65, 0.01)
@@ -134,9 +137,13 @@ func (m *Motor) RunForDegrees(degrees, speed int) error {
 	m.brick.mu.Unlock()
 
 	// Send ramp command (selrate 10 sets the sensor data interval)
-	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
-		m.port, m.port, currentPos, newPos, durationSecs)
-	if err := m.brick.writeCommand(cmd); err != nil {
+	if err := m.brick.writeCommand(Compound(
+		SelectPort(m.port),
+		Select(0),
+		SelRate(10),
+		PID(m.port, 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
+		SetRamp(currentPos, newPos, durationSecs),
+	)); err != nil {
 		// Remove the future since command failed
 		m.brick.mu.Lock()
 		if len(m.brick.rampFutures[m.port]) > 0 {
@@ -180,9 +187,11 @@ func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 	processedSpeed := m.processSpeed(speed)
 
 	// Set up PID for speed control
-	pidCmd := "pid %d 0 0 s1 1 0 0.003 0.01 0 100 0.01"
+	var pidCmd Command
 	if m.rpm {
-		pidCmd = "pid_diff %d 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01"
+		pidCmd = PIDDiff(m.port, 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
+	} else {
+		pidCmd = PID(m.port, 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
 	}
 
 	// Create a future channel for completion notification
@@ -192,9 +201,13 @@ func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 	m.brick.mu.Unlock()
 
 	seconds := duration.Seconds()
-	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; %s ; set pulse %.6f 0.0 %.6f 0",
-		m.port, fmt.Sprintf(pidCmd, m.port), processedSpeed, seconds)
-	if err := m.brick.writeCommand(cmd); err != nil {
+	if err := m.brick.writeCommand(Compound(
+		SelectPort(m.port),
+		Select(0),
+		SelRate(10),
+		pidCmd,
+		SetPulse(processedSpeed, 0.0, seconds),
+	)); err != nil {
 		// Remove the future since command failed
 		m.brick.mu.Lock()
 		if len(m.brick.pulseFutures[m.port]) > 0 {
@@ -348,10 +361,13 @@ func (m *Motor) executeRampMovement(currentPos, newPos float64, duration time.Du
 	m.brick.mu.Unlock()
 
 	durationSecs := duration.Seconds()
-	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; pid %d 0 1 s4 0.0027777778 0 5 0 .1 3 0.01 ; set ramp %.6f %.6f %.6f 0",
-		m.port, m.port, currentPos, newPos, durationSecs)
-
-	if err := m.brick.writeCommand(cmd); err != nil {
+	if err := m.brick.writeCommand(Compound(
+		SelectPort(m.port),
+		Select(0),
+		SelRate(10),
+		PID(m.port, 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
+		SetRamp(currentPos, newPos, durationSecs),
+	)); err != nil {
 		// Remove the future since command failed
 		m.brick.mu.Lock()
 		if len(m.brick.rampFutures[m.port]) > 0 {
@@ -408,15 +424,20 @@ func (m *Motor) Start(speed int) error {
 	processedSpeed := m.processSpeed(speed)
 
 	// Set up PID
-	pidCmd := "pid %d 0 0 s1 1 0 0.003 0.01 0 100 0.01"
+	var pidCmd Command
 	if m.rpm {
-		pidCmd = "pid_diff %d 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01"
+		pidCmd = PIDDiff(m.port, 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
+	} else {
+		pidCmd = PID(m.port, 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
 	}
 
-	cmd := fmt.Sprintf("port %d ; select 0 ; selrate 10 ; %s ; set %.6f",
-		m.port, fmt.Sprintf(pidCmd, m.port), processedSpeed)
-
-	if err := m.brick.writeCommand(cmd); err != nil {
+	if err := m.brick.writeCommand(Compound(
+		SelectPort(m.port),
+		Select(0),
+		SelRate(10),
+		pidCmd,
+		SetConstantFormatted(processedSpeed, "%f"),
+	)); err != nil {
 		return err
 	}
 
@@ -434,8 +455,7 @@ func (m *Motor) Stop() error {
 
 // Coast puts the motor into coast mode (freely spinning)
 func (m *Motor) Coast() error {
-	cmd := fmt.Sprintf("port %d ; coast", m.port)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), Coast()))
 }
 
 // Float puts the motor into float mode (same as coast)
@@ -493,8 +513,7 @@ func (m *Motor) SetPowerLimit(limit float64) error {
 	if limit < 0 || limit > 1 {
 		return fmt.Errorf("power limit must be between 0 and 1")
 	}
-	cmd := fmt.Sprintf("port %d ; port_plimit %.2f", m.port, limit)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), PortPLimit(limit)))
 }
 
 // SetPWMParams sets PWM thresholds
@@ -505,8 +524,7 @@ func (m *Motor) SetPWMParams(pwmThresh, minPWM float64) error {
 	if minPWM < 0 || minPWM > 1 {
 		return fmt.Errorf("minPWM must be between 0 and 1")
 	}
-	cmd := fmt.Sprintf("port %d ; pwmparams %.2f %.2f", m.port, pwmThresh, minPWM)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), PWMParams(pwmThresh, minPWM)))
 }
 
 // PWM sets the motor to PWM mode with the specified value (-1.0 to 1.0)
@@ -514,14 +532,12 @@ func (m *Motor) PWM(value float64) error {
 	if value < -1 || value > 1 {
 		return fmt.Errorf("PWM value must be between -1 and 1")
 	}
-	cmd := fmt.Sprintf("port %d ; pwm ; set %.2f", m.port, value)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), PWM(), SetConstantFormatted(value, "%.2f")))
 }
 
 // PresetPosition presets the motor position to 0
 func (m *Motor) PresetPosition() error {
-	cmd := fmt.Sprintf("port %d ; preset", m.port)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), Preset()))
 }
 
 // SetRelease sets whether the motor should coast after completing a movement

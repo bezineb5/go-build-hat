@@ -21,8 +21,7 @@ type DistanceSensor struct {
 // GetDistance gets the current distance reading in millimeters
 func (s *DistanceSensor) GetDistance() (int, error) {
 	// Set to distance mode (mode 0)
-	cmd := fmt.Sprintf("port %d ; select 0", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(0))); err != nil {
 		return 0, err
 	}
 

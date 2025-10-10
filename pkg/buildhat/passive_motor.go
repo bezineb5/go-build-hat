@@ -28,14 +28,12 @@ func (m *PassiveMotor) Start(speed int) error {
 	}
 
 	// Passive motors use simple speed control
-	cmd := fmt.Sprintf("port %d ; set %d", m.port, speed)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), SetConstant(float64(speed))))
 }
 
 // Stop stops the passive motor
 func (m *PassiveMotor) Stop() error {
-	stopCmd := fmt.Sprintf("port %d ; set 0", m.port)
-	return m.brick.writeCommand(stopCmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), SetConstant(0)))
 }
 
 // SetSpeed sets the speed of the passive motor (-100 to 100)
@@ -43,6 +41,5 @@ func (m *PassiveMotor) SetSpeed(speed int) error {
 	if speed < -100 || speed > 100 {
 		return fmt.Errorf("speed must be between -100 and 100, got %d", speed)
 	}
-	cmd := fmt.Sprintf("port %d ; set %d", m.port, speed)
-	return m.brick.writeCommand(cmd)
+	return m.brick.writeCommand(Compound(SelectPort(m.port), SetConstant(float64(speed))))
 }

@@ -22,8 +22,7 @@ type ForceSensor struct {
 func (s *ForceSensor) GetForce() (int, error) {
 	// Python uses combi mode: [(0, 0), (1, 0), (3, 0)]
 	// For simplicity, we'll just use mode 0
-	cmd := fmt.Sprintf("port %d ; select 0", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(0))); err != nil {
 		return 0, err
 	}
 

@@ -21,8 +21,7 @@ type ColorDistanceSensor struct {
 // GetColor gets the current color reading as RGBA
 func (s *ColorDistanceSensor) GetColor() (Color, error) {
 	// Set to color mode (mode 0)
-	cmd := fmt.Sprintf("port %d ; select 0", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(0))); err != nil {
 		return Color{}, err
 	}
 
@@ -53,8 +52,7 @@ func (s *ColorDistanceSensor) GetColor() (Color, error) {
 // GetDistance gets the distance reading
 func (s *ColorDistanceSensor) GetDistance() (int, error) {
 	// Set to distance mode (mode 1)
-	cmd := fmt.Sprintf("port %d ; select 1", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(1))); err != nil {
 		return 0, err
 	}
 
@@ -79,8 +77,7 @@ func (s *ColorDistanceSensor) GetDistance() (int, error) {
 // GetReflectedLight gets the reflected light reading
 func (s *ColorDistanceSensor) GetReflectedLight() (int, error) {
 	// Set to reflected light mode (mode 2)
-	cmd := fmt.Sprintf("port %d ; select 2", s.port)
-	if err := s.brick.writeCommand(cmd); err != nil {
+	if err := s.brick.writeCommand(Compound(SelectPort(s.port), Select(2))); err != nil {
 		return 0, err
 	}
 
