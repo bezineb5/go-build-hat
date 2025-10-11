@@ -114,7 +114,7 @@ func TestPassiveMotor_AllPorts(t *testing.T) {
 
 	for _, tc := range ports {
 		motor := brick.PassiveMotor(tc.port)
-		if motor.port != tc.expected {
+		if motor.port != Port(tc.expected) {
 			t.Errorf("Port %s: expected port number %d, got %d", tc.port, tc.expected, motor.port)
 		}
 	}

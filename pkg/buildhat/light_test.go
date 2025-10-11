@@ -140,7 +140,7 @@ func TestLight_AllPorts(t *testing.T) {
 
 	for _, tc := range ports {
 		light := brick.Light(tc.port)
-		if light.port != tc.expected {
+		if light.port != Port(tc.expected) {
 			t.Errorf("Port %s: expected port number %d, got %d", tc.port, tc.expected, light.port)
 		}
 	}

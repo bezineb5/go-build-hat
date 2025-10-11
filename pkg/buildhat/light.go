@@ -8,14 +8,14 @@ import (
 func (b *Brick) Light(port Port) *Light {
 	return &Light{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // Light provides a Python-like light interface
 type Light struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // SetBrightness sets the brightness of the light (0-100)

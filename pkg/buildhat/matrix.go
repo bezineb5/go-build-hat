@@ -55,7 +55,7 @@ func (c MatrixColor) String() string {
 func (b *Brick) Matrix(port Port) *Matrix {
 	return &Matrix{
 		brick:  b,
-		port:   port.Int(),
+		port:   port,
 		pixels: [3][3]Pixel{},
 	}
 }
@@ -69,7 +69,7 @@ type Pixel struct {
 // Matrix provides a Python-like LED matrix interface
 type Matrix struct {
 	brick  *Brick
-	port   int
+	port   Port
 	pixels [3][3]Pixel
 }
 
@@ -155,8 +155,8 @@ func (m *Matrix) display() error {
 	data[0] = 0xc2
 
 	idx := 1
-	for x := 0; x < 3; x++ {
-		for y := 0; y < 3; y++ {
+	for x := range 3 {
+		for y := range 3 {
 			// Pack brightness and color into single byte
 			data[idx] = byte((m.pixels[x][y].Brightness << 4) | int(m.pixels[x][y].Color))
 			idx++

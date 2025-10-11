@@ -8,14 +8,14 @@ import (
 func (b *Brick) DistanceSensor(port Port) *DistanceSensor {
 	return &DistanceSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // DistanceSensor provides a Python-like distance sensor interface
 type DistanceSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetDistance gets the current distance reading in millimeters
@@ -26,7 +26,7 @@ func (s *DistanceSensor) GetDistance() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}

@@ -7,8 +7,8 @@ import (
 
 // Command represents a BuildHAT serial command
 type Command interface {
-	// String returns the command string to send to the BuildHAT
-	String() string
+	// CommandString returns the command string to send to the BuildHAT
+	CommandString() string
 }
 
 // ======== Simple Commands (no parameters) ========
@@ -16,7 +16,7 @@ type Command interface {
 // HelpCommand requests help/command synopsis
 type HelpCommand struct{}
 
-func (c HelpCommand) String() string { return "help" }
+func (c HelpCommand) CommandString() string { return "help" }
 
 // Help creates a help command
 func Help() Command { return HelpCommand{} }
@@ -24,7 +24,7 @@ func Help() Command { return HelpCommand{} }
 // VersionCommand requests firmware version
 type VersionCommand struct{}
 
-func (c VersionCommand) String() string { return "version" }
+func (c VersionCommand) CommandString() string { return "version" }
 
 // Version creates a version command
 func Version() Command { return VersionCommand{} }
@@ -32,7 +32,7 @@ func Version() Command { return VersionCommand{} }
 // ListCommand requests list of connected devices
 type ListCommand struct{}
 
-func (c ListCommand) String() string { return "list" }
+func (c ListCommand) CommandString() string { return "list" }
 
 // List creates a list command
 func List() Command { return ListCommand{} }
@@ -40,7 +40,7 @@ func List() Command { return ListCommand{} }
 // VinCommand requests input voltage
 type VinCommand struct{}
 
-func (c VinCommand) String() string { return "vin" }
+func (c VinCommand) CommandString() string { return "vin" }
 
 // Vin creates a vin command
 func Vin() Command { return VinCommand{} }
@@ -48,7 +48,7 @@ func Vin() Command { return VinCommand{} }
 // ClearFaultsCommand clears motor power faults
 type ClearFaultsCommand struct{}
 
-func (c ClearFaultsCommand) String() string { return "clear_faults" }
+func (c ClearFaultsCommand) CommandString() string { return "clear_faults" }
 
 // ClearFaults creates a clear_faults command
 func ClearFaults() Command { return ClearFaultsCommand{} }
@@ -56,7 +56,7 @@ func ClearFaults() Command { return ClearFaultsCommand{} }
 // CoastCommand switches motor driver to coast mode
 type CoastCommand struct{}
 
-func (c CoastCommand) String() string { return "coast" }
+func (c CoastCommand) CommandString() string { return "coast" }
 
 // Coast creates a coast command
 func Coast() Command { return CoastCommand{} }
@@ -64,7 +64,7 @@ func Coast() Command { return CoastCommand{} }
 // PWMCommand switches controller to direct PWM mode
 type PWMCommand struct{}
 
-func (c PWMCommand) String() string { return "pwm" }
+func (c PWMCommand) CommandString() string { return "pwm" }
 
 // PWM creates a pwm command
 func PWM() Command { return PWMCommand{} }
@@ -72,7 +72,7 @@ func PWM() Command { return PWMCommand{} }
 // OffCommand turns off motor (pwm; set 0)
 type OffCommand struct{}
 
-func (c OffCommand) String() string { return "off" }
+func (c OffCommand) CommandString() string { return "off" }
 
 // Off creates an off command
 func Off() Command { return OffCommand{} }
@@ -80,7 +80,7 @@ func Off() Command { return OffCommand{} }
 // OnCommand turns on motor full power (pwm; set 1)
 type OnCommand struct{}
 
-func (c OnCommand) String() string { return "on" }
+func (c OnCommand) CommandString() string { return "on" }
 
 // On creates an on command
 func On() Command { return OnCommand{} }
@@ -88,7 +88,7 @@ func On() Command { return OnCommand{} }
 // SignatureCommand requests signature (not normally needed)
 type SignatureCommand struct{}
 
-func (c SignatureCommand) String() string { return "signature" }
+func (c SignatureCommand) CommandString() string { return "signature" }
 
 // Signature creates a signature command
 func Signature() Command { return SignatureCommand{} }
@@ -97,16 +97,16 @@ func Signature() Command { return SignatureCommand{} }
 
 // PortCommand sets the current port
 type PortCommand struct {
-	PortNum int
+	port Port
 }
 
-func (c PortCommand) String() string {
-	return fmt.Sprintf("port %d", c.PortNum)
+func (c PortCommand) CommandString() string {
+	return fmt.Sprintf("port %d", c.port.Int())
 }
 
 // SelectPort creates a port command
-func SelectPort(port int) Command {
-	return PortCommand{PortNum: port}
+func SelectPort(port Port) Command {
+	return PortCommand{port: port}
 }
 
 // EchoCommand enables/disables echo
@@ -114,7 +114,7 @@ type EchoCommand struct {
 	Enable bool
 }
 
-func (c EchoCommand) String() string {
+func (c EchoCommand) CommandString() string {
 	val := 0
 	if c.Enable {
 		val = 1
@@ -143,7 +143,7 @@ type LEDModeCommand struct {
 	Mode LEDMode
 }
 
-func (c LEDModeCommand) String() string {
+func (c LEDModeCommand) CommandString() string {
 	return fmt.Sprintf("ledmode %d", c.Mode)
 }
 
@@ -157,7 +157,7 @@ type PLimitCommand struct {
 	Limit float64
 }
 
-func (c PLimitCommand) String() string {
+func (c PLimitCommand) CommandString() string {
 	return fmt.Sprintf("plimit %g", c.Limit)
 }
 
@@ -171,7 +171,7 @@ type BiasCommand struct {
 	Bias float64
 }
 
-func (c BiasCommand) String() string {
+func (c BiasCommand) CommandString() string {
 	return fmt.Sprintf("bias %g", c.Bias)
 }
 
@@ -185,7 +185,7 @@ type DebugCommand struct {
 	DebugCode int
 }
 
-func (c DebugCommand) String() string {
+func (c DebugCommand) CommandString() string {
 	return fmt.Sprintf("debug %d", c.DebugCode)
 }
 
@@ -277,7 +277,7 @@ func (s RampSetpoint) String() string {
 	return fmt.Sprintf("ramp %f %f %f 0", s.StartValue, s.EndValue, s.Duration)
 }
 
-func (c SetCommand) String() string {
+func (c SetCommand) CommandString() string {
 	return fmt.Sprintf("set %s", c.setpoint.String())
 }
 
@@ -355,7 +355,7 @@ type PIDCommand struct {
 	Bias     float64    // bias value (undocumented but used in practice)
 }
 
-func (c PIDCommand) String() string {
+func (c *PIDCommand) CommandString() string {
 	return fmt.Sprintf("pid %d %d %d %s %g %d %g %g %g %g %g",
 		c.PVPort, c.PVMode, c.PVOffset, c.PVFormat,
 		c.PVScale, c.PVUnwrap, c.Kp, c.Ki, c.Kd, c.Windup, c.Bias)
@@ -364,7 +364,7 @@ func (c PIDCommand) String() string {
 // PID creates a PID command
 func PID(pvPort, pvMode, pvOffset int, pvFormat DataFormat, pvScale float64,
 	pvUnwrap int, kp, ki, kd, windup, bias float64) Command {
-	return PIDCommand{
+	return &PIDCommand{
 		PVPort:   pvPort,
 		PVMode:   pvMode,
 		PVOffset: pvOffset,
@@ -394,7 +394,7 @@ type PIDDiffCommand struct {
 	Bias     float64    // bias value (undocumented but used in practice)
 }
 
-func (c PIDDiffCommand) String() string {
+func (c *PIDDiffCommand) CommandString() string {
 	return fmt.Sprintf("pid_diff %d %d %d %s %g %d %g %g %g %g %g",
 		c.PVPort, c.PVMode, c.PVOffset, c.PVFormat,
 		c.PVScale, c.PVUnwrap, c.Kp, c.Ki, c.Kd, c.Windup, c.Bias)
@@ -403,7 +403,7 @@ func (c PIDDiffCommand) String() string {
 // PIDDiff creates a PID differential command
 func PIDDiff(pvPort, pvMode, pvOffset int, pvFormat DataFormat, pvScale float64,
 	pvUnwrap int, kp, ki, kd, windup, bias float64) Command {
-	return PIDDiffCommand{
+	return &PIDDiffCommand{
 		PVPort:   pvPort,
 		PVMode:   pvMode,
 		PVOffset: pvOffset,
@@ -427,7 +427,7 @@ type SelectCommand struct {
 	Format *DataFormat // nil for raw hex output
 }
 
-func (c SelectCommand) String() string {
+func (c SelectCommand) CommandString() string {
 	if c.Mode == nil {
 		return "select"
 	}
@@ -459,7 +459,7 @@ type SelectOnceCommand struct {
 	Format *DataFormat // nil for raw hex output
 }
 
-func (c SelectOnceCommand) String() string {
+func (c SelectOnceCommand) CommandString() string {
 	if c.Mode == nil {
 		return "selonce"
 	}
@@ -498,7 +498,7 @@ type CombiCommand struct {
 	ModeList []ModeDataset // nil/empty means deconfigure
 }
 
-func (c CombiCommand) String() string {
+func (c CombiCommand) CommandString() string {
 	if len(c.ModeList) == 0 {
 		return fmt.Sprintf("combi %d", c.Index)
 	}
@@ -527,7 +527,7 @@ type Write1Command struct {
 	Bytes []byte
 }
 
-func (c Write1Command) String() string {
+func (c Write1Command) CommandString() string {
 	hexParts := make([]string, len(c.Bytes))
 	for i, b := range c.Bytes {
 		hexParts[i] = fmt.Sprintf("%x", b)
@@ -545,7 +545,7 @@ type Write2Command struct {
 	Bytes []byte
 }
 
-func (c Write2Command) String() string {
+func (c Write2Command) CommandString() string {
 	hexParts := make([]string, len(c.Bytes))
 	for i, b := range c.Bytes {
 		hexParts[i] = fmt.Sprintf("%x", b)
@@ -565,10 +565,10 @@ type CompoundCommand struct {
 	Commands []Command
 }
 
-func (c CompoundCommand) String() string {
+func (c CompoundCommand) CommandString() string {
 	parts := make([]string, len(c.Commands))
 	for i, cmd := range c.Commands {
-		parts[i] = cmd.String()
+		parts[i] = cmd.CommandString()
 	}
 	return strings.Join(parts, " ; ")
 }
@@ -585,7 +585,7 @@ type SelRateCommand struct {
 	Rate int
 }
 
-func (c SelRateCommand) String() string {
+func (c SelRateCommand) CommandString() string {
 	return fmt.Sprintf("selrate %d", c.Rate)
 }
 
@@ -597,7 +597,7 @@ func SelRate(rate int) Command {
 // PresetCommand presets the motor position
 type PresetCommand struct{}
 
-func (c PresetCommand) String() string { return "preset" }
+func (c PresetCommand) CommandString() string { return "preset" }
 
 // Preset creates a preset command
 func Preset() Command { return PresetCommand{} }
@@ -607,7 +607,7 @@ type PortPLimitCommand struct {
 	Limit float64
 }
 
-func (c PortPLimitCommand) String() string {
+func (c PortPLimitCommand) CommandString() string {
 	return fmt.Sprintf("port_plimit %.2f", c.Limit)
 }
 
@@ -622,7 +622,7 @@ type PWMParamsCommand struct {
 	MinPWM    float64
 }
 
-func (c PWMParamsCommand) String() string {
+func (c PWMParamsCommand) CommandString() string {
 	return fmt.Sprintf("pwmparams %.2f %.2f", c.PWMThresh, c.MinPWM)
 }
 
@@ -636,7 +636,7 @@ func PWMParams(pwmThresh, minPWM float64) Command {
 // ClearCommand clears the command buffer
 type ClearCommand struct{}
 
-func (c ClearCommand) String() string { return "clear" }
+func (c ClearCommand) CommandString() string { return "clear" }
 
 // Clear creates a clear command
 func Clear() Command { return ClearCommand{} }
@@ -647,7 +647,7 @@ type LoadCommand struct {
 	Checksum int
 }
 
-func (c LoadCommand) String() string {
+func (c LoadCommand) CommandString() string {
 	return fmt.Sprintf("load %d %d", c.Length, c.Checksum)
 }
 
@@ -661,7 +661,7 @@ type SignatureLoadCommand struct {
 	Length int
 }
 
-func (c SignatureLoadCommand) String() string {
+func (c SignatureLoadCommand) CommandString() string {
 	return fmt.Sprintf("signature %d", c.Length)
 }
 
@@ -673,7 +673,7 @@ func SignatureLoad(length int) Command {
 // RebootCommand reboots the BuildHAT
 type RebootCommand struct{}
 
-func (c RebootCommand) String() string { return "reboot" }
+func (c RebootCommand) CommandString() string { return "reboot" }
 
 // Reboot creates a reboot command
 func Reboot() Command { return RebootCommand{} }

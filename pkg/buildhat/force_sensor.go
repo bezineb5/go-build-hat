@@ -8,14 +8,14 @@ import (
 func (b *Brick) ForceSensor(port Port) *ForceSensor {
 	return &ForceSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // ForceSensor provides a Python-like force sensor interface
 type ForceSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetForce gets the current force reading in Newtons
@@ -27,7 +27,7 @@ func (s *ForceSensor) GetForce() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}

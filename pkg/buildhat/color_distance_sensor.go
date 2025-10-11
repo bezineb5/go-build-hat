@@ -8,14 +8,14 @@ import (
 func (b *Brick) ColorDistanceSensor(port Port) *ColorDistanceSensor {
 	return &ColorDistanceSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // ColorDistanceSensor provides a Python-like color distance sensor interface
 type ColorDistanceSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetColor gets the current color reading as RGBA
@@ -26,7 +26,7 @@ func (s *ColorDistanceSensor) GetColor() (Color, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return Color{}, err
 	}
@@ -57,7 +57,7 @@ func (s *ColorDistanceSensor) GetDistance() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}
@@ -82,7 +82,7 @@ func (s *ColorDistanceSensor) GetReflectedLight() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}

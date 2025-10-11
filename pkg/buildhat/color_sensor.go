@@ -6,16 +6,32 @@ import (
 
 // ColorSensor creates a color sensor interface for the specified port
 func (b *Brick) ColorSensor(port Port) *ColorSensor {
-	return &ColorSensor{
+	cs := &ColorSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
+
+	// Initialize sensor like Python version does:
+	// 1. reverse() - sets plimit 1; set -1 (reverse polarity to turn on LED)
+	_ = b.writeCommand(Compound(
+		SelectPort(port),
+		PortPLimit(1),
+		SetConstant(-1),
+	))
+
+	// 2. mode(6) - sets mode 6 (SPEC 1) to turn on the LED
+	_ = b.writeCommand(Compound(
+		SelectPort(port),
+		Select(6),
+	))
+
+	return cs
 }
 
 // ColorSensor provides a Python-like color sensor interface
 type ColorSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetColor gets the current color reading as RGBA
@@ -26,7 +42,7 @@ func (s *ColorSensor) GetColor() (Color, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return Color{}, err
 	}
@@ -57,7 +73,7 @@ func (s *ColorSensor) GetReflectedLight() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}
@@ -82,7 +98,7 @@ func (s *ColorSensor) GetAmbientLight() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}

@@ -1,6 +1,7 @@
 package buildhat
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -92,13 +93,7 @@ func TestMotor_RunForRotations(t *testing.T) {
 
 	// Should also have a coast command at the end
 	expectedCoast := "port 0 ; coast\r"
-	foundCoast := false
-	for _, cmd := range writeHistory {
-		if cmd == expectedCoast {
-			foundCoast = true
-			break
-		}
-	}
+	foundCoast := slices.Contains(writeHistory, expectedCoast)
 	if !foundCoast {
 		t.Errorf("Expected coast command '%s', got: %v", expectedCoast, writeHistory)
 	}

@@ -1,6 +1,8 @@
 package buildhat
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -268,9 +270,9 @@ func TestMatrix_AllPorts(t *testing.T) {
 	brick := TestBrick(t)
 	defer CleanupTestBrick(brick)
 
-	ports := []struct {
-		port     Port
-		expected int
+	tests := []struct {
+		port         Port
+		expectedPort int // The numeric port value in the command
 	}{
 		{PortA, 0},
 		{PortB, 1},
@@ -278,10 +280,30 @@ func TestMatrix_AllPorts(t *testing.T) {
 		{PortD, 3},
 	}
 
-	for _, tc := range ports {
+	for _, tc := range tests {
+		mockPort := brick.GetMockPort()
+		mockPort.ClearWriteHistory()
+
 		matrix := brick.Matrix(tc.port)
-		if matrix.port != tc.expected {
-			t.Errorf("Port %s: expected port number %d, got %d", tc.port, tc.expected, matrix.port)
+
+		// Set a pixel to trigger a write command
+		err := matrix.SetPixel(0, 0, MatrixWhite, 5)
+		if err != nil {
+			t.Errorf("Port %s: SetPixel failed: %v", tc.port, err)
+			continue
+		}
+
+		// Verify the command uses the correct port number
+		history := mockPort.GetWriteHistory()
+		if len(history) == 0 {
+			t.Errorf("Port %s: no commands sent", tc.port)
+			continue
+		}
+
+		// Check that the command contains the correct port number
+		expectedPrefix := fmt.Sprintf("port %d ; ", tc.expectedPort)
+		if !strings.HasPrefix(history[0], expectedPrefix) {
+			t.Errorf("Port %s: expected command to start with '%s', got: %s", tc.port, expectedPrefix, history[0])
 		}
 	}
 }

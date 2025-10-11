@@ -70,7 +70,7 @@ func TestButtonSensor_AllPorts(t *testing.T) {
 
 	for _, tc := range ports {
 		sensor := brick.ButtonSensor(tc.port)
-		if sensor.port != tc.expected {
+		if sensor.port != Port(tc.expected) {
 			t.Errorf("Port %s: expected port number %d, got %d", tc.port, tc.expected, sensor.port)
 		}
 	}

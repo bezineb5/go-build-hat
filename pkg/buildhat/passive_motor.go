@@ -8,14 +8,14 @@ import (
 func (b *Brick) PassiveMotor(port Port) *PassiveMotor {
 	return &PassiveMotor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // PassiveMotor provides a Python-like passive motor interface (WeDo motors)
 type PassiveMotor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // Start starts the passive motor at the specified speed (-100 to 100)

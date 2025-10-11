@@ -8,14 +8,14 @@ import (
 func (b *Brick) MotionSensor(port Port) *MotionSensor {
 	return &MotionSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // MotionSensor provides a Python-like motion sensor interface (WeDo sensor)
 type MotionSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetDistance gets the distance reading from the motion sensor
@@ -26,7 +26,7 @@ func (s *MotionSensor) GetDistance() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}
@@ -51,7 +51,7 @@ func (s *MotionSensor) GetMovementCount() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return 0, err
 	}

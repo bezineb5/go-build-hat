@@ -8,14 +8,14 @@ import (
 func (b *Brick) ButtonSensor(port Port) *ButtonSensor {
 	return &ButtonSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // ButtonSensor provides a Python-like button sensor interface
 type ButtonSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // IsPressed checks if the button is pressed
@@ -26,7 +26,7 @@ func (s *ButtonSensor) IsPressed() (bool, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return false, err
 	}

@@ -25,13 +25,14 @@ func TestColorSensor_GetColor(t *testing.T) {
 
 	// Verify commands were sent
 	writeHistory := mockPort.GetWriteHistory()
-	if len(writeHistory) < 1 {
-		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
+	if len(writeHistory) < 3 {
+		t.Fatalf("Expected at least 3 commands (init + select), got %d", len(writeHistory))
 	}
 
-	// Verify EXACT select mode command: "port 3 ; select 5\r" (mode 5 for RGBI)
+	// First two commands are initialization: plimit and mode 6
+	// Third command should be the actual select mode 5 for RGBI
 	expectedCmd := "port 3 ; select 5\r"
-	selectCmd := writeHistory[0]
+	selectCmd := writeHistory[2]
 	if selectCmd != expectedCmd {
 		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}
@@ -65,13 +66,14 @@ func TestColorSensor_GetReflectedLight(t *testing.T) {
 
 	// Verify commands were sent
 	writeHistory := mockPort.GetWriteHistory()
-	if len(writeHistory) < 1 {
-		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
+	if len(writeHistory) < 3 {
+		t.Fatalf("Expected at least 3 commands (init + select), got %d", len(writeHistory))
 	}
 
-	// Verify EXACT select mode command: "port 3 ; select 1\r" (mode 1 for reflected light)
+	// First two commands are initialization: plimit and mode 6
+	// Third command should be the actual select mode 1 for reflected light
 	expectedCmd := "port 3 ; select 1\r"
-	selectCmd := writeHistory[0]
+	selectCmd := writeHistory[2]
 	if selectCmd != expectedCmd {
 		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}
@@ -103,13 +105,14 @@ func TestColorSensor_GetAmbientLight(t *testing.T) {
 
 	// Verify commands were sent
 	writeHistory := mockPort.GetWriteHistory()
-	if len(writeHistory) < 1 {
-		t.Fatalf("Expected at least 1 command, got %d", len(writeHistory))
+	if len(writeHistory) < 3 {
+		t.Fatalf("Expected at least 3 commands (init + select), got %d", len(writeHistory))
 	}
 
-	// Verify EXACT select mode command: "port 3 ; select 2\r" (mode 2 for ambient light)
+	// First two commands are initialization: plimit and mode 6
+	// Third command should be the actual select mode 2 for ambient light
 	expectedCmd := "port 3 ; select 2\r"
-	selectCmd := writeHistory[0]
+	selectCmd := writeHistory[2]
 	if selectCmd != expectedCmd {
 		t.Errorf("Expected exact command '%s', got: %s", expectedCmd, selectCmd)
 	}

@@ -37,14 +37,14 @@ func (d TiltDirection) String() string {
 func (b *Brick) TiltSensor(port Port) *TiltSensor {
 	return &TiltSensor{
 		brick: b,
-		port:  port.Int(),
+		port:  port,
 	}
 }
 
 // TiltSensor provides a Python-like tilt sensor interface (WeDo sensor)
 type TiltSensor struct {
 	brick *Brick
-	port  int
+	port  Port
 }
 
 // GetTilt gets the current tilt reading as X, Y, Z coordinates
@@ -55,7 +55,7 @@ func (s *TiltSensor) GetTilt() (struct{ X, Y, Z int }, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port)
+	data, err := s.brick.getSensorData(s.port.Int())
 	if err != nil {
 		return struct{ X, Y, Z int }{}, err
 	}

@@ -27,7 +27,7 @@ func TestSimpleCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -48,8 +48,8 @@ func TestPortCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			cmd := SelectPort(tt.port)
-			result := cmd.String()
+			cmd := SelectPort(Port(tt.port))
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -69,7 +69,7 @@ func TestEchoCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			cmd := Echo(tt.enable)
-			result := cmd.String()
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -92,7 +92,7 @@ func TestLEDModeCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			cmd := LEDModeCmd(tt.mode)
-			result := cmd.String()
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -113,7 +113,7 @@ func TestPLimitCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			cmd := PLimit(tt.limit)
-			result := cmd.String()
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -134,7 +134,7 @@ func TestBiasCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			cmd := Bias(tt.bias)
-			result := cmd.String()
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -156,7 +156,7 @@ func TestSetConstantCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			cmd := SetConstant(tt.value)
-			result := cmd.String()
+			result := cmd.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -199,7 +199,7 @@ func TestSetWaveformCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -210,7 +210,7 @@ func TestSetWaveformCommands(t *testing.T) {
 func TestPIDCommand(t *testing.T) {
 	cmd := PID(0, 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01)
 	expected := "pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01"
-	result := cmd.String()
+	result := cmd.CommandString()
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
 	}
@@ -219,7 +219,7 @@ func TestPIDCommand(t *testing.T) {
 func TestPIDDiffCommand(t *testing.T) {
 	cmd := PIDDiff(0, 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
 	expected := "pid_diff 0 0 5 s2 0.0027777778 1 0 2.5 0 0.4 0.01"
-	result := cmd.String()
+	result := cmd.CommandString()
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
 	}
@@ -241,7 +241,7 @@ func TestSelectCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -278,7 +278,7 @@ func TestCombiCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -306,7 +306,7 @@ func TestWriteCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -321,7 +321,7 @@ func TestCompoundCommand(t *testing.T) {
 		SetConstant(-1),
 	)
 	expected := "port 0 ; plimit 1 ; set -1"
-	result := cmd.String()
+	result := cmd.CommandString()
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
 	}
@@ -340,7 +340,7 @@ func TestExtendedCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -360,7 +360,7 @@ func TestFirmwareCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.command.String()
+			result := tt.command.CommandString()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -379,7 +379,7 @@ func TestComplexMotorCommand(t *testing.T) {
 	)
 
 	expected := "port 0 ; select 0 ; selrate 10 ; pid 0 0 1 s4 0.0027777778 0 5 0 0.1 3 0.01 ; set ramp 0.000000 360.000000 3.000000 0"
-	result := cmd.String()
+	result := cmd.CommandString()
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
 	}

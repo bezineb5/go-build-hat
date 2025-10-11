@@ -28,7 +28,7 @@ const (
 func (b *Brick) Motor(port Port) *Motor {
 	motor := &Motor{
 		brick:        b,
-		port:         port.Int(),
+		port:         port,
 		defaultSpeed: 20,
 		currentSpeed: 0,
 		runMode:      MotorRunModeNone,
@@ -39,7 +39,7 @@ func (b *Brick) Motor(port Port) *Motor {
 	// Initialize motor with default settings
 	// Set combi mode: mode 1 (speed), mode 2 (position), mode 3 (absolute position)
 	_ = b.writeCommand(Compound(
-		Port(port.Int()),
+		SelectPort(port),
 		Combi(0, ModeDataset{Mode: 1, Offset: 0}, ModeDataset{Mode: 2, Offset: 0}, ModeDataset{Mode: 3, Offset: 0}),
 		Select(0),
 		SelRate(10),
@@ -54,7 +54,7 @@ func (b *Brick) Motor(port Port) *Motor {
 // Motor provides a Python-like motor interface
 type Motor struct {
 	brick        *Brick
-	port         int
+	port         Port
 	defaultSpeed int
 	currentSpeed int
 	runMode      MotorRunMode
@@ -141,7 +141,7 @@ func (m *Motor) RunForDegrees(degrees, speed int) error {
 		SelectPort(m.port),
 		Select(0),
 		SelRate(10),
-		PID(m.port, 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
+		PID(m.port.Int(), 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
 		SetRamp(currentPos, newPos, durationSecs),
 	)); err != nil {
 		// Remove the future since command failed
@@ -189,9 +189,9 @@ func (m *Motor) RunForDuration(duration time.Duration, speed int) error {
 	// Set up PID for speed control
 	var pidCmd Command
 	if m.rpm {
-		pidCmd = PIDDiff(m.port, 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
+		pidCmd = PIDDiff(m.port.Int(), 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
 	} else {
-		pidCmd = PID(m.port, 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
+		pidCmd = PID(m.port.Int(), 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
 	}
 
 	// Create a future channel for completion notification
@@ -365,7 +365,7 @@ func (m *Motor) executeRampMovement(currentPos, newPos float64, duration time.Du
 		SelectPort(m.port),
 		Select(0),
 		SelRate(10),
-		PID(m.port, 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
+		PID(m.port.Int(), 0, 1, DataFormatS4, 0.0027777778, 0, 5, 0, 0.1, 3, 0.01),
 		SetRamp(currentPos, newPos, durationSecs),
 	)); err != nil {
 		// Remove the future since command failed
@@ -426,9 +426,9 @@ func (m *Motor) Start(speed int) error {
 	// Set up PID
 	var pidCmd Command
 	if m.rpm {
-		pidCmd = PIDDiff(m.port, 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
+		pidCmd = PIDDiff(m.port.Int(), 0, 5, DataFormatS2, 0.0027777778, 1, 0, 2.5, 0, 0.4, 0.01)
 	} else {
-		pidCmd = PID(m.port, 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
+		pidCmd = PID(m.port.Int(), 0, 0, DataFormatS1, 1, 0, 0.003, 0.01, 0, 100, 0.01)
 	}
 
 	if err := m.brick.writeCommand(Compound(
@@ -550,7 +550,7 @@ func (m *Motor) SetRelease(release bool) {
 // from the motor. The motor continuously sends data due to combi mode setup.
 func (m *Motor) getData() ([]interface{}, error) {
 	// Wait for sensor data (motor is already sending data continuously)
-	data, err := m.brick.getSensorData(m.port)
+	data, err := m.brick.getSensorData(m.port.Int())
 	if err != nil {
 		return nil, err
 	}

@@ -27,9 +27,6 @@ func NewFirmwareManager(brick *Brick) *FirmwareManager {
 func (fm *FirmwareManager) CheckAndUpdateFirmware() error {
 	fm.brick.logger.Info("Checking firmware status")
 
-	// Clear the port first
-	fm.brick.scanner.Scan()
-
 	// Check for bootloader signature
 	if fm.isInBootloaderMode() {
 		fm.brick.logger.Info("Bootloader detected, updating firmware")
@@ -76,7 +73,6 @@ func (fm *FirmwareManager) updateFirmware() error {
 		return fmt.Errorf("failed to clear: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
-	fm.brick.scanner.Scan()
 
 	// Step 2: Load the firmware
 	checksum := fm.calculateChecksum(firmware)
@@ -104,8 +100,6 @@ func (fm *FirmwareManager) updateFirmware() error {
 	time.Sleep(10 * time.Millisecond)
 
 	// Step 3: Load the signature
-	fm.brick.scanner.Scan() // Clear any pending data
-
 	if err := fm.brick.writeCommand(SignatureLoad(len(signature))); err != nil {
 		return fmt.Errorf("failed to load signature: %w", err)
 	}
@@ -131,7 +125,6 @@ func (fm *FirmwareManager) updateFirmware() error {
 		return fmt.Errorf("failed to reboot: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
-	fm.brick.scanner.Scan()
 
 	// Wait for boot to complete
 	time.Sleep(1500 * time.Millisecond)
