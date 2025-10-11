@@ -550,7 +550,7 @@ func (m *Motor) SetRelease(release bool) {
 // from the motor. The motor continuously sends data due to combi mode setup.
 func (m *Motor) getData() ([]interface{}, error) {
 	// Wait for sensor data (motor is already sending data continuously)
-	data, err := m.brick.getSensorData(m.port.Int())
+	data, err := m.brick.getSensorData(m.port)
 	if err != nil {
 		return nil, err
 	}

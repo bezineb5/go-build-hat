@@ -26,7 +26,7 @@ func (s *ButtonSensor) IsPressed() (bool, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return false, err
 	}

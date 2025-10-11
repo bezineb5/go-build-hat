@@ -26,7 +26,7 @@ func (s *DistanceSensor) GetDistance() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return 0, err
 	}

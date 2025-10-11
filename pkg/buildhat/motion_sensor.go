@@ -26,7 +26,7 @@ func (s *MotionSensor) GetDistance() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return 0, err
 	}
@@ -51,7 +51,7 @@ func (s *MotionSensor) GetMovementCount() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return 0, err
 	}

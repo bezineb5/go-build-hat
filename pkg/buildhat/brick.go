@@ -269,7 +269,7 @@ func (b *Brick) tryParseSensorData(line string) bool {
 		return false
 	}
 
-	b.handleSensorData(int(port), line)
+	b.handleSensorData(port, line)
 	return true
 }
 
@@ -373,13 +373,13 @@ func (b *Brick) handleVersionResponse(version string) {
 
 // handleSensorData handles sensor data.
 // line is the full message, e.g., "P0M1: 123 456" (port 0, mode 1, values 123 and 456)
-func (b *Brick) handleSensorData(portID int, line string) {
+func (b *Brick) handleSensorData(port Port, line string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	// Ensure line is long enough to slice
 	if len(line) < 5 {
-		b.logger.Debug("Sensor data too short", "port", portID, "line", line)
+		b.logger.Debug("Sensor data too short", "port", port, "line", line)
 		return
 	}
 
@@ -402,6 +402,7 @@ func (b *Brick) handleSensorData(portID int, line string) {
 		}
 	}
 
+	portID := port.Int()
 	b.connections[portID].Data = data
 	b.logger.Debug("Sensor data", "port", portID, "data", data)
 
@@ -468,21 +469,22 @@ func (b *Brick) ScanDevices() error {
 }
 
 // getSensorData waits for sensor data from a specific port
-func (b *Brick) getSensorData(port int) ([]any, error) {
+func (b *Brick) getSensorData(port Port) ([]any, error) {
 	b.mu.Lock()
+	portID := port.Int()
 
 	// Check if we already have cached data
-	if len(b.connections[port].Data) > 0 {
-		data := b.connections[port].Data
+	if len(b.connections[portID].Data) > 0 {
+		data := b.connections[portID].Data
 		// Clear cached data so next call gets fresh data
-		b.connections[port].Data = nil
+		b.connections[portID].Data = nil
 		b.mu.Unlock()
 		return data, nil
 	}
 
 	// No cached data, create a future and wait for new data
 	future := make(chan []any, 1)
-	b.sensorFutures[port] = append(b.sensorFutures[port], future)
+	b.sensorFutures[portID] = append(b.sensorFutures[portID], future)
 	b.mu.Unlock()
 
 	select {

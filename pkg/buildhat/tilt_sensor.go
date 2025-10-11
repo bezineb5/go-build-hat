@@ -55,7 +55,7 @@ func (s *TiltSensor) GetTilt() (struct{ X, Y, Z int }, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return struct{ X, Y, Z int }{}, err
 	}

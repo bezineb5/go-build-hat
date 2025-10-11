@@ -42,7 +42,7 @@ func (s *ColorSensor) GetColor() (Color, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return Color{}, err
 	}
@@ -73,7 +73,7 @@ func (s *ColorSensor) GetReflectedLight() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return 0, err
 	}
@@ -98,7 +98,7 @@ func (s *ColorSensor) GetAmbientLight() (int, error) {
 	}
 
 	// Wait for sensor data
-	data, err := s.brick.getSensorData(s.port.Int())
+	data, err := s.brick.getSensorData(s.port)
 	if err != nil {
 		return 0, err
 	}
