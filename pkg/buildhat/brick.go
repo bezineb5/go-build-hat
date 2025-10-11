@@ -125,13 +125,14 @@ func (b *Brick) Initialize() error {
 
 // Close closes the BuildHat connection
 func (b *Brick) Close() error {
+	// Close the serial port first to unblock the scanner
+	if closer, ok := b.writer.(io.Closer); ok {
+		closer.Close()
+	}
+
+	// Then cancel the context and wait for goroutines to finish
 	b.cancel()
 	b.wg.Wait()
-
-	// Close the writer if it implements io.Closer
-	if closer, ok := b.writer.(io.Closer); ok {
-		return closer.Close()
-	}
 
 	return nil
 }
@@ -162,6 +163,11 @@ func (b *Brick) reader() {
 
 // parseLine parses incoming serial data
 func (b *Brick) parseLine(line string) {
+	// Log all received lines for debugging
+	if line != "" {
+		b.logger.Debug("RX", "line", line)
+	}
+
 	if b.tryParsePortMessage(line) {
 		return
 	}
@@ -219,13 +225,19 @@ func (b *Brick) tryParseVoltageReading(line string) bool {
 
 // tryParseVersionResponse attempts to parse version responses
 func (b *Brick) tryParseVersionResponse(line string) bool {
-	if !strings.HasPrefix(line, "Firmware version: ") {
-		return false
+	// Handle firmware version responses
+	if version, ok := strings.CutPrefix(line, "Firmware version: "); ok {
+		b.handleVersionResponse(version)
+		return true
 	}
 
-	version := strings.TrimPrefix(line, "Firmware version: ")
-	b.handleVersionResponse(version)
-	return true
+	// Handle bootloader version responses
+	if strings.HasPrefix(line, "BuildHAT bootloader version") {
+		b.handleVersionResponse(line)
+		return true
+	}
+
+	return false
 }
 
 // tryParseSensorData attempts to parse sensor data
@@ -384,11 +396,12 @@ func (b *Brick) handleSensorData(portID int, line string) {
 
 // writeCommand sends a command to the BuildHat
 func (b *Brick) writeCommand(command Command) error {
-	cmd := command.String()
+	cmd := command.CommandString()
 	if !strings.HasSuffix(cmd, "\r") {
 		cmd += "\r"
 	}
 
+	b.logger.Debug("TX", "cmd", strings.TrimSuffix(cmd, "\r"))
 	_, err := b.writer.Write([]byte(cmd))
 	return err
 }
