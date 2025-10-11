@@ -187,23 +187,26 @@ func (b *Brick) parseLine(line string) {
 	b.logger.Debug("Unhandled line", "line", line)
 }
 
-// tryParsePortMessage attempts to parse port connection messages
+// tryParsePortMessage attempts to parse port connection messages.
+// Examples: "P0: connected to active ID 3D", "P1: ramp done"
 func (b *Brick) tryParsePortMessage(line string) bool {
 	if len(line) < 3 || line[0] != 'P' || line[2] != ':' {
 		return false
 	}
 
-	portID := int(line[1] - '0')
-	if portID < 0 || portID > 3 {
+	// Parse port using the Port helper
+	port, err := ParsePortNumber(rune(line[1]))
+	if err != nil {
 		return false
 	}
 
 	msg := line[2:]
-	b.handlePortMessage(portID, msg)
+	b.handlePortMessage(int(port), msg)
 	return true
 }
 
-// tryParseVoltageReading attempts to parse voltage readings
+// tryParseVoltageReading attempts to parse voltage readings.
+// Example: "7.85 V"
 func (b *Brick) tryParseVoltageReading(line string) bool {
 	if len(line) < 3 || !strings.HasSuffix(line, " V") {
 		return false
@@ -223,7 +226,8 @@ func (b *Brick) tryParseVoltageReading(line string) bool {
 	return true
 }
 
-// tryParseVersionResponse attempts to parse version responses
+// tryParseVersionResponse attempts to parse version responses.
+// Examples: "Firmware version: 20201016.10", "BuildHAT bootloader version 0.0.1"
 func (b *Brick) tryParseVersionResponse(line string) bool {
 	// Handle firmware version responses
 	if version, ok := strings.CutPrefix(line, "Firmware version: "); ok {
@@ -240,26 +244,37 @@ func (b *Brick) tryParseVersionResponse(line string) bool {
 	return false
 }
 
-// tryParseSensorData attempts to parse sensor data
+// tryParseSensorData attempts to parse sensor data.
+// Examples: "P0M1: 123 456", "P2C0: 1.5 2.3"
 func (b *Brick) tryParseSensorData(line string) bool {
-	if len(line) < 4 || line[0] != 'P' {
+	// Format: P<port><M|C><mode>: <data>
+	// Minimum: "P0M0:" = 5 chars
+	if len(line) < 5 || line[0] != 'P' {
 		return false
 	}
 
+	// Check for 'M' (mode data) or 'C' (combo data)
 	if line[2] != 'M' && line[2] != 'C' {
 		return false
 	}
 
-	portID := int(line[1] - '0')
-	if portID < 0 || portID > 3 {
+	// Parse port using the Port helper
+	port, err := ParsePortNumber(rune(line[1]))
+	if err != nil {
 		return false
 	}
 
-	b.handleSensorData(portID, line)
+	// Verify there's a colon separator (at position 4 for single-digit mode)
+	if !strings.Contains(line[3:], ":") {
+		return false
+	}
+
+	b.handleSensorData(int(port), line)
 	return true
 }
 
-// handlePortMessage handles port connection/disconnection messages
+// handlePortMessage handles port connection/disconnection messages.
+// msg includes the colon prefix, e.g., ": ramp done", ": connected to active ID 3D"
 func (b *Brick) handlePortMessage(portID int, msg string) {
 	switch {
 	case strings.Contains(msg, "ramp done"):
@@ -356,7 +371,8 @@ func (b *Brick) handleVersionResponse(version string) {
 	}
 }
 
-// handleSensorData handles sensor data
+// handleSensorData handles sensor data.
+// line is the full message, e.g., "P0M1: 123 456" (port 0, mode 1, values 123 and 456)
 func (b *Brick) handleSensorData(portID int, line string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

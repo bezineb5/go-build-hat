@@ -257,8 +257,8 @@ func (m *MockSerialPort) SimulateSensorResponse(port string, mode int, value str
 	}
 
 	// Queue the sensor data in the format expected by parseLine
-	// Format: P<port>M<mode> <data>
-	m.QueueReadData(fmt.Sprintf("P%dM%d %s\r\n", portNum, mode, value))
+	// Format: P<port>M<mode>: <data> (matches firmware output format)
+	m.QueueReadData(fmt.Sprintf("P%dM%d: %s\r\n", portNum, mode, value))
 }
 
 // autoRespond automatically responds to certain commands

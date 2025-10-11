@@ -126,3 +126,37 @@ func TestPortRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestParsePortNumber(t *testing.T) {
+	tests := []struct {
+		input       rune
+		expected    Port
+		shouldError bool
+	}{
+		{'0', PortA, false},
+		{'1', PortB, false},
+		{'2', PortC, false},
+		{'3', PortD, false},
+		{'4', Port(-1), true},
+		{'9', Port(-1), true},
+		{'-', Port(-1), true},
+		{'A', Port(-1), true},
+		{'a', Port(-1), true},
+	}
+
+	for _, tt := range tests {
+		result, err := ParsePortNumber(tt.input)
+		if tt.shouldError {
+			if err == nil {
+				t.Errorf("ParsePortNumber(%q): expected error, got nil", tt.input)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("ParsePortNumber(%q): unexpected error: %v", tt.input, err)
+			}
+			if result != tt.expected {
+				t.Errorf("ParsePortNumber(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		}
+	}
+}

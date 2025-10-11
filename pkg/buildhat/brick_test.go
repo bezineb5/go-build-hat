@@ -304,3 +304,125 @@ func TestBrick_CheckFirmwareVersion(t *testing.T) {
 		t.Error("Expected firmware versions to match")
 	}
 }
+
+func TestBrick_tryParsePortMessage(t *testing.T) {
+	brick := TestBrick(t)
+	defer CleanupTestBrick(brick)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"valid active connection", "P0: connected to active ID 3D", true},
+		{"valid passive connection", "P2: connected to passive ID 2", true},
+		{"valid ramp done", "P1: ramp done", true},
+		{"valid pulse done", "P3: pulse done", true},
+		{"valid disconnected", "P0: disconnected", true},
+		{"too short", "P0", false},
+		{"no port prefix", "X0: message", false},
+		{"no colon", "P0 message", false},
+		{"invalid port number", "P9: message", false},
+		{"invalid port char", "PX: message", false},
+		{"empty string", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := brick.tryParsePortMessage(tt.input)
+			if result != tt.expected {
+				t.Errorf("tryParsePortMessage(%q) = %v, expected %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBrick_tryParseSensorData(t *testing.T) {
+	brick := TestBrick(t)
+	defer CleanupTestBrick(brick)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"valid mode data", "P0M1: 123 456", true},
+		{"valid combo data", "P2C0: 1.5 2.3", true},
+		{"valid with multiple values", "P1M2: 100 200 300", true},
+		{"valid with floats", "P3C1: 1.5 2.5 3.5", true},
+		{"minimum valid", "P0M0:", true},
+		{"too short", "P0M", false},
+		{"no port prefix", "X0M1: data", false},
+		{"invalid type", "P0X1: data", false},
+		{"invalid port", "P9M1: data", false},
+		{"no colon", "P0M1 data", false},
+		{"missing colon after mode", "P0M1data", false},
+		{"empty string", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := brick.tryParseSensorData(tt.input)
+			if result != tt.expected {
+				t.Errorf("tryParseSensorData(%q) = %v, expected %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBrick_tryParseVoltageReading(t *testing.T) {
+	brick := TestBrick(t)
+	defer CleanupTestBrick(brick)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"valid voltage", "7.85 V", true},
+		{"valid integer voltage", "8 V", true},
+		{"valid small voltage", "0.5 V", true},
+		{"no suffix", "7.85", false},
+		{"wrong suffix", "7.85 A", false},
+		{"no space", "7.85V", false},
+		{"too short", "V", false},
+		{"invalid number", "abc V", false},
+		{"empty string", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := brick.tryParseVoltageReading(tt.input)
+			if result != tt.expected {
+				t.Errorf("tryParseVoltageReading(%q) = %v, expected %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBrick_tryParseVersionResponse(t *testing.T) {
+	brick := TestBrick(t)
+	defer CleanupTestBrick(brick)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"valid firmware version", "Firmware version: 20201016.10", true},
+		{"valid bootloader version", "BuildHAT bootloader version 0.0.1", true},
+		{"firmware with timestamp", "Firmware version: 1737564117 2025-01-22T16:41:57+00:00", true},
+		{"wrong prefix", "Version: 1.0.0", false},
+		{"partial match", "Firmware", false},
+		{"empty string", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := brick.tryParseVersionResponse(tt.input)
+			if result != tt.expected {
+				t.Errorf("tryParseVersionResponse(%q) = %v, expected %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

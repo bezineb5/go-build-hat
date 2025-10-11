@@ -57,6 +57,15 @@ func ParsePort(s string) (Port, error) {
 	}
 }
 
+// ParsePortNumber converts a rune ('0', '1', '2', or '3') to a BuildHatPort
+func ParsePortNumber(r rune) (Port, error) {
+	port := Port(r - '0')
+	if port < PortA || port > PortD {
+		return -1, fmt.Errorf("invalid port number: %c (must be 0-3)", r)
+	}
+	return port, nil
+}
+
 // AllPorts returns a slice of all valid ports
 func AllPorts() []Port {
 	return []Port{PortA, PortB, PortC, PortD}
