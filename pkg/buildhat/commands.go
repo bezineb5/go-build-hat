@@ -100,23 +100,23 @@ type PortCommand struct {
 	port Port
 }
 
-func (c PortCommand) CommandString() string {
+func (c *PortCommand) CommandString() string {
 	return fmt.Sprintf("port %d", c.port.Int())
 }
 
 // SelectPort creates a port command
 func SelectPort(port Port) Command {
-	return PortCommand{port: port}
+	return &PortCommand{port: port}
 }
 
 // EchoCommand enables/disables echo
 type EchoCommand struct {
-	Enable bool
+	enable bool
 }
 
-func (c EchoCommand) CommandString() string {
+func (c *EchoCommand) CommandString() string {
 	val := 0
-	if c.Enable {
+	if c.enable {
 		val = 1
 	}
 	return fmt.Sprintf("echo %d", val)
@@ -124,7 +124,7 @@ func (c EchoCommand) CommandString() string {
 
 // Echo creates an echo command
 func Echo(enable bool) Command {
-	return EchoCommand{Enable: enable}
+	return &EchoCommand{enable: enable}
 }
 
 // LEDMode represents the LED behavior mode
@@ -140,58 +140,58 @@ const (
 
 // LEDModeCommand sets LED behavior
 type LEDModeCommand struct {
-	Mode LEDMode
+	mode LEDMode
 }
 
-func (c LEDModeCommand) CommandString() string {
-	return fmt.Sprintf("ledmode %d", c.Mode)
+func (c *LEDModeCommand) CommandString() string {
+	return fmt.Sprintf("ledmode %d", c.mode)
 }
 
 // LEDModeCmd creates an ledmode command
 func LEDModeCmd(mode LEDMode) Command {
-	return LEDModeCommand{Mode: mode}
+	return &LEDModeCommand{mode: mode}
 }
 
 // PLimitCommand sets global power limit
 type PLimitCommand struct {
-	Limit float64
+	limit float64
 }
 
-func (c PLimitCommand) CommandString() string {
-	return fmt.Sprintf("plimit %g", c.Limit)
+func (c *PLimitCommand) CommandString() string {
+	return fmt.Sprintf("plimit %g", c.limit)
 }
 
 // PLimit creates a plimit command
 func PLimit(limit float64) Command {
-	return PLimitCommand{Limit: limit}
+	return &PLimitCommand{limit: limit}
 }
 
 // BiasCommand sets bias for motor drive
 type BiasCommand struct {
-	Bias float64
+	bias float64
 }
 
-func (c BiasCommand) CommandString() string {
-	return fmt.Sprintf("bias %g", c.Bias)
+func (c *BiasCommand) CommandString() string {
+	return fmt.Sprintf("bias %g", c.bias)
 }
 
 // Bias creates a bias command
 func Bias(bias float64) Command {
-	return BiasCommand{Bias: bias}
+	return &BiasCommand{bias: bias}
 }
 
 // DebugCommand sets debug mode
 type DebugCommand struct {
-	DebugCode int
+	debugCode int
 }
 
-func (c DebugCommand) CommandString() string {
-	return fmt.Sprintf("debug %d", c.DebugCode)
+func (c *DebugCommand) CommandString() string {
+	return fmt.Sprintf("debug %d", c.debugCode)
 }
 
 // Debug creates a debug command
 func Debug(code int) Command {
-	return DebugCommand{DebugCode: code}
+	return &DebugCommand{debugCode: code}
 }
 
 // ======== Set Command (Setpoint Control) ========
@@ -207,74 +207,74 @@ type setpoint interface {
 
 // ConstantSetpoint represents a constant setpoint value
 type ConstantSetpoint struct {
-	Value float64
+	value float64
 }
 
-func (s ConstantSetpoint) String() string {
-	return fmt.Sprintf("%g", s.Value)
+func (s *ConstantSetpoint) String() string {
+	return fmt.Sprintf("%g", s.value)
 }
 
 // SquareWaveSetpoint represents a square wave setpoint
 type SquareWaveSetpoint struct {
-	Min    float64
-	Max    float64
-	Period float64
-	Phase  float64
+	min    float64
+	max    float64
+	period float64
+	phase  float64
 }
 
-func (s SquareWaveSetpoint) String() string {
-	return fmt.Sprintf("square %g %g %g %g", s.Min, s.Max, s.Period, s.Phase)
+func (s *SquareWaveSetpoint) String() string {
+	return fmt.Sprintf("square %g %g %g %g", s.min, s.max, s.period, s.phase)
 }
 
 // SineWaveSetpoint represents a sine wave setpoint
 type SineWaveSetpoint struct {
-	Min    float64
-	Max    float64
-	Period float64
-	Phase  float64
+	min    float64
+	max    float64
+	period float64
+	phase  float64
 }
 
-func (s SineWaveSetpoint) String() string {
-	return fmt.Sprintf("sine %g %g %g %g", s.Min, s.Max, s.Period, s.Phase)
+func (s *SineWaveSetpoint) String() string {
+	return fmt.Sprintf("sine %g %g %g %g", s.min, s.max, s.period, s.phase)
 }
 
 // TriangleWaveSetpoint represents a triangle wave setpoint
 type TriangleWaveSetpoint struct {
-	Min    float64
-	Max    float64
-	Period float64
-	Phase  float64
+	min    float64
+	max    float64
+	period float64
+	phase  float64
 }
 
-func (s TriangleWaveSetpoint) String() string {
-	return fmt.Sprintf("triangle %g %g %g %g", s.Min, s.Max, s.Period, s.Phase)
+func (s *TriangleWaveSetpoint) String() string {
+	return fmt.Sprintf("triangle %g %g %g %g", s.min, s.max, s.period, s.phase)
 }
 
 // PulseSetpoint represents a pulse setpoint
 type PulseSetpoint struct {
-	DuringValue float64
-	AfterValue  float64
-	Duration    float64
+	duringValue float64
+	afterValue  float64
+	duration    float64
 }
 
-func (s PulseSetpoint) String() string {
+func (s *PulseSetpoint) String() string {
 	// Special case: format 0.0 as "0.0" not "0"
-	afterStr := fmt.Sprintf("%g", s.AfterValue)
-	if s.AfterValue == 0 {
+	afterStr := fmt.Sprintf("%g", s.afterValue)
+	if s.afterValue == 0 {
 		afterStr = "0.0"
 	}
-	return fmt.Sprintf("pulse %f %s %f 0", s.DuringValue, afterStr, s.Duration)
+	return fmt.Sprintf("pulse %f %s %f 0", s.duringValue, afterStr, s.duration)
 }
 
 // RampSetpoint represents a ramp setpoint
 type RampSetpoint struct {
-	StartValue float64
-	EndValue   float64
-	Duration   float64
+	startValue float64
+	endValue   float64
+	duration   float64
 }
 
-func (s RampSetpoint) String() string {
-	return fmt.Sprintf("ramp %f %f %f 0", s.StartValue, s.EndValue, s.Duration)
+func (s *RampSetpoint) String() string {
+	return fmt.Sprintf("ramp %f %f %f 0", s.startValue, s.endValue, s.duration)
 }
 
 func (c SetCommand) CommandString() string {
@@ -283,46 +283,46 @@ func (c SetCommand) CommandString() string {
 
 // SetConstant creates a set command with constant value
 func SetConstant(value float64) Command {
-	return SetCommand{setpoint: ConstantSetpoint{Value: value}}
+	return SetCommand{setpoint: &ConstantSetpoint{value: value}}
 }
 
 // SetConstantFormatted creates a set command with a specific float format
 func SetConstantFormatted(value float64, format string) Command {
-	return SetCommand{setpoint: &formattedConstant{Value: value, Format: format}}
+	return SetCommand{setpoint: &formattedConstant{value: value, format: format}}
 }
 
 type formattedConstant struct {
-	Value  float64
-	Format string
+	value  float64
+	format string
 }
 
 func (f *formattedConstant) String() string {
-	return fmt.Sprintf(f.Format, f.Value)
+	return fmt.Sprintf(f.format, f.value)
 }
 
 // SetSquareWave creates a set command with square wave
 func SetSquareWave(minVal, maxVal, period, phase float64) Command {
-	return SetCommand{setpoint: SquareWaveSetpoint{Min: minVal, Max: maxVal, Period: period, Phase: phase}}
+	return SetCommand{setpoint: &SquareWaveSetpoint{min: minVal, max: maxVal, period: period, phase: phase}}
 }
 
 // SetSineWave creates a set command with sine wave
 func SetSineWave(minVal, maxVal, period, phase float64) Command {
-	return SetCommand{setpoint: SineWaveSetpoint{Min: minVal, Max: maxVal, Period: period, Phase: phase}}
+	return SetCommand{setpoint: &SineWaveSetpoint{min: minVal, max: maxVal, period: period, phase: phase}}
 }
 
 // SetTriangleWave creates a set command with triangle wave
 func SetTriangleWave(minVal, maxVal, period, phase float64) Command {
-	return SetCommand{setpoint: TriangleWaveSetpoint{Min: minVal, Max: maxVal, Period: period, Phase: phase}}
+	return SetCommand{setpoint: &TriangleWaveSetpoint{min: minVal, max: maxVal, period: period, phase: phase}}
 }
 
 // SetPulse creates a set command with pulse
 func SetPulse(duringValue, afterValue, duration float64) Command {
-	return SetCommand{setpoint: PulseSetpoint{DuringValue: duringValue, AfterValue: afterValue, Duration: duration}}
+	return SetCommand{setpoint: &PulseSetpoint{duringValue: duringValue, afterValue: afterValue, duration: duration}}
 }
 
 // SetRamp creates a set command with ramp
 func SetRamp(startValue, endValue, duration float64) Command {
-	return SetCommand{setpoint: RampSetpoint{StartValue: startValue, EndValue: endValue, Duration: duration}}
+	return SetCommand{setpoint: &RampSetpoint{startValue: startValue, endValue: endValue, duration: duration}}
 }
 
 // ======== PID Command ========
@@ -342,79 +342,79 @@ const (
 
 // PIDCommand switches controller to PID mode
 type PIDCommand struct {
-	PVPort   int        // port to fetch process variable from
-	PVMode   int        // mode to fetch process variable from
-	PVOffset int        // byte offset into mode
-	PVFormat DataFormat // format of process variable
-	PVScale  float64    // multiplicative scale factor
-	PVUnwrap int        // 0=no unwrapping, otherwise modulo for phase unwrap
-	Kp       float64    // proportional gain
-	Ki       float64    // integral gain
-	Kd       float64    // differential gain
-	Windup   float64    // integral windup limit
-	Bias     float64    // bias value (undocumented but used in practice)
+	pvPort   int        // port to fetch process variable from
+	pvMode   int        // mode to fetch process variable from
+	pvOffset int        // byte offset into mode
+	pvFormat DataFormat // format of process variable
+	pvScale  float64    // multiplicative scale factor
+	pvUnwrap int        // 0=no unwrapping, otherwise modulo for phase unwrap
+	kp       float64    // proportional gain
+	ki       float64    // integral gain
+	kd       float64    // differential gain
+	windup   float64    // integral windup limit
+	bias     float64    // bias value (undocumented but used in practice)
 }
 
 func (c *PIDCommand) CommandString() string {
 	return fmt.Sprintf("pid %d %d %d %s %g %d %g %g %g %g %g",
-		c.PVPort, c.PVMode, c.PVOffset, c.PVFormat,
-		c.PVScale, c.PVUnwrap, c.Kp, c.Ki, c.Kd, c.Windup, c.Bias)
+		c.pvPort, c.pvMode, c.pvOffset, c.pvFormat,
+		c.pvScale, c.pvUnwrap, c.kp, c.ki, c.kd, c.windup, c.bias)
 }
 
 // PID creates a PID command
 func PID(pvPort, pvMode, pvOffset int, pvFormat DataFormat, pvScale float64,
 	pvUnwrap int, kp, ki, kd, windup, bias float64) Command {
 	return &PIDCommand{
-		PVPort:   pvPort,
-		PVMode:   pvMode,
-		PVOffset: pvOffset,
-		PVFormat: pvFormat,
-		PVScale:  pvScale,
-		PVUnwrap: pvUnwrap,
-		Kp:       kp,
-		Ki:       ki,
-		Kd:       kd,
-		Windup:   windup,
-		Bias:     bias,
+		pvPort:   pvPort,
+		pvMode:   pvMode,
+		pvOffset: pvOffset,
+		pvFormat: pvFormat,
+		pvScale:  pvScale,
+		pvUnwrap: pvUnwrap,
+		kp:       kp,
+		ki:       ki,
+		kd:       kd,
+		windup:   windup,
+		bias:     bias,
 	}
 }
 
 // PIDDiffCommand switches controller to PID differential mode (for velocity control)
 type PIDDiffCommand struct {
-	PVPort   int        // port to fetch process variable from
-	PVMode   int        // mode to fetch process variable from
-	PVOffset int        // byte offset into mode
-	PVFormat DataFormat // format of process variable
-	PVScale  float64    // multiplicative scale factor
-	PVUnwrap int        // 0=no unwrapping, otherwise modulo for phase unwrap
-	Kp       float64    // proportional gain
-	Ki       float64    // integral gain
-	Kd       float64    // differential gain
-	Windup   float64    // integral windup limit
-	Bias     float64    // bias value (undocumented but used in practice)
+	pvPort   int        // port to fetch process variable from
+	pvMode   int        // mode to fetch process variable from
+	pvOffset int        // byte offset into mode
+	pvFormat DataFormat // format of process variable
+	pvScale  float64    // multiplicative scale factor
+	pvUnwrap int        // 0=no unwrapping, otherwise modulo for phase unwrap
+	kp       float64    // proportional gain
+	ki       float64    // integral gain
+	kd       float64    // differential gain
+	windup   float64    // integral windup limit
+	bias     float64    // bias value (undocumented but used in practice)
 }
 
 func (c *PIDDiffCommand) CommandString() string {
 	return fmt.Sprintf("pid_diff %d %d %d %s %g %d %g %g %g %g %g",
-		c.PVPort, c.PVMode, c.PVOffset, c.PVFormat,
-		c.PVScale, c.PVUnwrap, c.Kp, c.Ki, c.Kd, c.Windup, c.Bias)
+		c.pvPort, c.pvMode, c.pvOffset, c.pvFormat,
+		c.pvScale, c.pvUnwrap, c.kp, c.ki, c.kd, c.windup, c.bias)
 }
 
 // PIDDiff creates a PID differential command
 func PIDDiff(pvPort, pvMode, pvOffset int, pvFormat DataFormat, pvScale float64,
 	pvUnwrap int, kp, ki, kd, windup, bias float64) Command {
 	return &PIDDiffCommand{
-		PVPort:   pvPort,
-		PVMode:   pvMode,
-		PVOffset: pvOffset,
-		PVFormat: pvFormat,
-		PVScale:  pvScale,
-		PVUnwrap: pvUnwrap,
-		Kp:       kp,
-		Ki:       ki,
-		Kd:       kd,
-		Windup:   windup,
-		Bias:     bias,
+		pvPort:   pvPort,
+		pvMode:   pvMode,
+		pvOffset: pvOffset,
+		pvFormat: pvFormat,
+		pvScale:  pvScale,
+		pvUnwrap: pvUnwrap,
+		kp:       kp,
+		ki:       ki,
+		kd:       kd,
+		windup:   windup,
+		bias:     bias,
 	}
 }
 
@@ -422,114 +422,119 @@ func PIDDiff(pvPort, pvMode, pvOffset int, pvFormat DataFormat, pvScale float64,
 
 // SelectCommand selects a mode on the current port
 type SelectCommand struct {
-	Mode   *int        // nil means deselect
-	Offset *int        // nil for raw hex output
-	Format *DataFormat // nil for raw hex output
+	mode   *int        // nil means deselect
+	offset *int        // nil for raw hex output
+	format *DataFormat // nil for raw hex output
 }
 
-func (c SelectCommand) CommandString() string {
-	if c.Mode == nil {
+func (c *SelectCommand) CommandString() string {
+	if c.mode == nil {
 		return "select"
 	}
-	if c.Offset == nil || c.Format == nil {
-		return fmt.Sprintf("select %d", *c.Mode)
+	if c.offset == nil || c.format == nil {
+		return fmt.Sprintf("select %d", *c.mode)
 	}
-	return fmt.Sprintf("select %d %d %s", *c.Mode, *c.Offset, *c.Format)
+	return fmt.Sprintf("select %d %d %s", *c.mode, *c.offset, *c.format)
 }
 
 // SelectDeselect creates a select command that deselects any mode
 func SelectDeselect() Command {
-	return SelectCommand{}
+	return &SelectCommand{}
 }
 
 // Select creates a select command for raw hex output
 func Select(mode int) Command {
-	return SelectCommand{Mode: &mode}
+	return &SelectCommand{mode: &mode}
 }
 
 // SelectFormatted creates a select command with offset and format
 func SelectFormatted(mode, offset int, format DataFormat) Command {
-	return SelectCommand{Mode: &mode, Offset: &offset, Format: &format}
+	return &SelectCommand{mode: &mode, offset: &offset, format: &format}
 }
 
 // SelectOnceCommand is like select but outputs once
 type SelectOnceCommand struct {
-	Mode   *int        // nil means deselect
-	Offset *int        // nil for raw hex output
-	Format *DataFormat // nil for raw hex output
+	mode   *int        // nil means deselect
+	offset *int        // nil for raw hex output
+	format *DataFormat // nil for raw hex output
 }
 
-func (c SelectOnceCommand) CommandString() string {
-	if c.Mode == nil {
+func (c *SelectOnceCommand) CommandString() string {
+	if c.mode == nil {
 		return "selonce"
 	}
-	if c.Offset == nil || c.Format == nil {
-		return fmt.Sprintf("selonce %d", *c.Mode)
+	if c.offset == nil || c.format == nil {
+		return fmt.Sprintf("selonce %d", *c.mode)
 	}
-	return fmt.Sprintf("selonce %d %d %s", *c.Mode, *c.Offset, *c.Format)
+	return fmt.Sprintf("selonce %d %d %s", *c.mode, *c.offset, *c.format)
 }
 
 // SelectOnceDeselect creates a selonce command that deselects any mode
 func SelectOnceDeselect() Command {
-	return SelectOnceCommand{}
+	return &SelectOnceCommand{}
 }
 
 // SelectOnce creates a selonce command for raw hex output
 func SelectOnce(mode int) Command {
-	return SelectOnceCommand{Mode: &mode}
+	return &SelectOnceCommand{mode: &mode}
 }
 
 // SelectOnceFormatted creates a selonce command with offset and format
 func SelectOnceFormatted(mode, offset int, format DataFormat) Command {
-	return SelectOnceCommand{Mode: &mode, Offset: &offset, Format: &format}
+	return &SelectOnceCommand{mode: &mode, offset: &offset, format: &format}
 }
 
 // ======== Combi Command ========
 
 // ModeDataset represents a mode and dataset offset pair for combi mode
 type ModeDataset struct {
-	Mode   int
-	Offset int
+	mode   int
+	offset int
+}
+
+// NewModeDataset creates a new ModeDataset
+func NewModeDataset(mode, offset int) ModeDataset {
+	return ModeDataset{mode: mode, offset: offset}
 }
 
 // CombiCommand configures a combi mode
 type CombiCommand struct {
-	Index    int
-	ModeList []ModeDataset // nil/empty means deconfigure
+	index    int
+	modeList []ModeDataset // nil/empty means deconfigure
 }
 
-func (c CombiCommand) CommandString() string {
-	if len(c.ModeList) == 0 {
-		return fmt.Sprintf("combi %d", c.Index)
+func (c *CombiCommand) CommandString() string {
+	if len(c.modeList) == 0 {
+		return fmt.Sprintf("combi %d", c.index)
 	}
 
-	parts := []string{fmt.Sprintf("combi %d", c.Index)}
-	for _, md := range c.ModeList {
-		parts = append(parts, fmt.Sprintf("%d %d", md.Mode, md.Offset))
+	parts := []string{fmt.Sprintf("combi %d", c.index)}
+	for _, md := range c.modeList {
+		parts = append(parts, fmt.Sprintf("%d %d", md.mode, md.offset))
 	}
 	return strings.Join(parts, " ")
 }
 
 // CombiDeconfigure creates a combi command that deconfigures a combi mode
 func CombiDeconfigure(index int) Command {
-	return CombiCommand{Index: index}
+	return &CombiCommand{index: index}
 }
 
 // Combi creates a combi command that configures a combi mode
 func Combi(index int, modeList ...ModeDataset) Command {
-	return CombiCommand{Index: index, ModeList: modeList}
+	return &CombiCommand{index: index, modeList: modeList}
 }
 
 // ======== Write Commands ========
 
 // Write1Command writes bytes with 1-byte header
 type Write1Command struct {
-	Bytes []byte
+	bytes []byte
 }
 
-func (c Write1Command) CommandString() string {
-	hexParts := make([]string, len(c.Bytes))
-	for i, b := range c.Bytes {
+func (c *Write1Command) CommandString() string {
+	hexParts := make([]string, len(c.bytes))
+	for i, b := range c.bytes {
 		hexParts[i] = fmt.Sprintf("%x", b)
 	}
 	return fmt.Sprintf("write1 %s", strings.Join(hexParts, " "))
@@ -537,17 +542,17 @@ func (c Write1Command) CommandString() string {
 
 // Write1 creates a write1 command
 func Write1(bytes ...byte) Command {
-	return Write1Command{Bytes: bytes}
+	return &Write1Command{bytes: bytes}
 }
 
 // Write2Command writes bytes with 2-byte header
 type Write2Command struct {
-	Bytes []byte
+	bytes []byte
 }
 
-func (c Write2Command) CommandString() string {
-	hexParts := make([]string, len(c.Bytes))
-	for i, b := range c.Bytes {
+func (c *Write2Command) CommandString() string {
+	hexParts := make([]string, len(c.bytes))
+	for i, b := range c.bytes {
 		hexParts[i] = fmt.Sprintf("%x", b)
 	}
 	return fmt.Sprintf("write2 %s", strings.Join(hexParts, " "))
@@ -555,19 +560,19 @@ func (c Write2Command) CommandString() string {
 
 // Write2 creates a write2 command
 func Write2(bytes ...byte) Command {
-	return Write2Command{Bytes: bytes}
+	return &Write2Command{bytes: bytes}
 }
 
 // ======== Compound Commands ========
 
 // CompoundCommand allows multiple commands on one line
 type CompoundCommand struct {
-	Commands []Command
+	commands []Command
 }
 
-func (c CompoundCommand) CommandString() string {
-	parts := make([]string, len(c.Commands))
-	for i, cmd := range c.Commands {
+func (c *CompoundCommand) CommandString() string {
+	parts := make([]string, len(c.commands))
+	for i, cmd := range c.commands {
 		parts[i] = cmd.CommandString()
 	}
 	return strings.Join(parts, " ; ")
@@ -575,23 +580,23 @@ func (c CompoundCommand) CommandString() string {
 
 // Compound creates a compound command from multiple commands
 func Compound(commands ...Command) Command {
-	return CompoundCommand{Commands: commands}
+	return &CompoundCommand{commands: commands}
 }
 
 // ======== Extended Commands (not in protocol.md but used in practice) ========
 
 // SelRateCommand sets the selection rate (frequency of sensor readings)
 type SelRateCommand struct {
-	Rate int
+	rate int
 }
 
-func (c SelRateCommand) CommandString() string {
-	return fmt.Sprintf("selrate %d", c.Rate)
+func (c *SelRateCommand) CommandString() string {
+	return fmt.Sprintf("selrate %d", c.rate)
 }
 
 // SelRate creates a selrate command
 func SelRate(rate int) Command {
-	return SelRateCommand{Rate: rate}
+	return &SelRateCommand{rate: rate}
 }
 
 // PresetCommand presets the motor position
@@ -604,31 +609,31 @@ func Preset() Command { return PresetCommand{} }
 
 // PortPLimitCommand sets power limit for specific port
 type PortPLimitCommand struct {
-	Limit float64
+	limit float64
 }
 
-func (c PortPLimitCommand) CommandString() string {
-	return fmt.Sprintf("port_plimit %.2f", c.Limit)
+func (c *PortPLimitCommand) CommandString() string {
+	return fmt.Sprintf("port_plimit %.2f", c.limit)
 }
 
 // PortPLimit creates a port_plimit command
 func PortPLimit(limit float64) Command {
-	return PortPLimitCommand{Limit: limit}
+	return &PortPLimitCommand{limit: limit}
 }
 
 // PWMParamsCommand sets PWM threshold and minimum PWM parameters
 type PWMParamsCommand struct {
-	PWMThresh float64
-	MinPWM    float64
+	pwmThresh float64
+	minPWM    float64
 }
 
-func (c PWMParamsCommand) CommandString() string {
-	return fmt.Sprintf("pwmparams %.2f %.2f", c.PWMThresh, c.MinPWM)
+func (c *PWMParamsCommand) CommandString() string {
+	return fmt.Sprintf("pwmparams %.2f %.2f", c.pwmThresh, c.minPWM)
 }
 
 // PWMParams creates a pwmparams command
 func PWMParams(pwmThresh, minPWM float64) Command {
-	return PWMParamsCommand{PWMThresh: pwmThresh, MinPWM: minPWM}
+	return &PWMParamsCommand{pwmThresh: pwmThresh, minPWM: minPWM}
 }
 
 // ======== Firmware Management Commands ========
@@ -643,31 +648,31 @@ func Clear() Command { return ClearCommand{} }
 
 // LoadCommand loads firmware
 type LoadCommand struct {
-	Length   int
-	Checksum int
+	length   int
+	checksum int
 }
 
-func (c LoadCommand) CommandString() string {
-	return fmt.Sprintf("load %d %d", c.Length, c.Checksum)
+func (c *LoadCommand) CommandString() string {
+	return fmt.Sprintf("load %d %d", c.length, c.checksum)
 }
 
 // Load creates a load command
 func Load(length, checksum int) Command {
-	return LoadCommand{Length: length, Checksum: checksum}
+	return &LoadCommand{length: length, checksum: checksum}
 }
 
 // SignatureLoadCommand loads signature
 type SignatureLoadCommand struct {
-	Length int
+	length int
 }
 
-func (c SignatureLoadCommand) CommandString() string {
-	return fmt.Sprintf("signature %d", c.Length)
+func (c *SignatureLoadCommand) CommandString() string {
+	return fmt.Sprintf("signature %d", c.length)
 }
 
 // SignatureLoad creates a signature load command
 func SignatureLoad(length int) Command {
-	return SignatureLoadCommand{Length: length}
+	return &SignatureLoadCommand{length: length}
 }
 
 // RebootCommand reboots the BuildHAT

@@ -40,7 +40,7 @@ func (b *Brick) Motor(port Port) *Motor {
 	// Set combi mode: mode 1 (speed), mode 2 (position), mode 3 (absolute position)
 	_ = b.writeCommand(Compound(
 		SelectPort(port),
-		Combi(0, ModeDataset{Mode: 1, Offset: 0}, ModeDataset{Mode: 2, Offset: 0}, ModeDataset{Mode: 3, Offset: 0}),
+		Combi(0, NewModeDataset(1, 0), NewModeDataset(2, 0), NewModeDataset(3, 0)),
 		Select(0),
 		SelRate(10),
 	))

@@ -361,6 +361,12 @@ func (b *Brick) handleSensorData(portID int, line string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	// Ensure line is long enough to slice
+	if len(line) < 5 {
+		b.logger.Debug("Sensor data too short", "port", portID, "line", line)
+		return
+	}
+
 	// Parse sensor data (simplified)
 	parts := strings.Split(line[5:], " ")
 	data := make([]any, 0, len(parts))
