@@ -66,7 +66,7 @@ func (m *MockSerialPort) Read(data []byte) (int, error) {
 	if len(m.readBuffer) == 0 {
 		// Release lock and wait a bit for data to arrive
 		m.mu.Unlock()
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond) // Increased from 1ms for better CI reliability
 		m.mu.Lock()
 
 		// Check again after waiting
@@ -263,27 +263,40 @@ func (m *MockSerialPort) SimulateSensorResponse(port string, mode int, value str
 
 // autoRespond automatically responds to certain commands
 func (m *MockSerialPort) autoRespond(command string) {
-	// Small delay to simulate processing
-	time.Sleep(10 * time.Millisecond)
+	// Check if it's a ramp or pulse command first
+	hasRamp := containsIgnoreCase(command, "set ramp")
+	hasPulse := containsIgnoreCase(command, "set pulse")
 
-	// Parse the command to extract port number and command type
-	// Look for "port <n>" and extract the port number
-	var portNum int
-	if _, err := fmt.Sscanf(command, "port %d", &portNum); err != nil {
-		return // Not a port command
+	if !hasRamp && !hasPulse {
+		return // Not a command we need to respond to
 	}
 
-	// Check if it's a ramp or pulse command
-	if containsIgnoreCase(command, "set ramp") {
+	// Parse the command to extract port number
+	// Look for "port <n>" pattern - use strings.Fields for better parsing
+	var portNum int
+	foundPort := false
+
+	// Try scanning from the beginning
+	if n, err := fmt.Sscanf(command, "port %d", &portNum); err == nil && n == 1 {
+		foundPort = true
+	}
+
+	if !foundPort {
+		m.logger.Debug("AutoRespond: could not parse port number", "command", command)
+		return
+	}
+
+	// Small delay to simulate processing
+	time.Sleep(50 * time.Millisecond)
+
+	if hasRamp {
 		// For testing, use a small delay to make tests fast
 		// In real hardware, the HAT sends "ramp done" when movement completes
-		time.Sleep(100 * time.Millisecond)
 		m.QueueReadData(fmt.Sprintf("P%d: ramp done\r\n", portNum))
 		m.logger.Debug("AutoRespond: ramp done", "port", portNum)
-	} else if containsIgnoreCase(command, "set pulse") {
+	} else if hasPulse {
 		// For testing, use a small delay to make tests fast
 		// In real hardware, the HAT sends "pulse done" when time completes
-		time.Sleep(100 * time.Millisecond)
 		m.QueueReadData(fmt.Sprintf("P%d: pulse done\r\n", portNum))
 		m.logger.Debug("AutoRespond: pulse done", "port", portNum)
 	}
